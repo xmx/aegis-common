@@ -3,7 +3,7 @@ package transport
 import (
 	"context"
 	"crypto/tls"
-	"net/netip"
+	"net"
 	"net/url"
 	"time"
 
@@ -11,83 +11,91 @@ import (
 	"golang.org/x/net/quic"
 )
 
-type DualDialer struct {
-	WebSocketDialer *websocket.Dialer
-	WebSocketPath   string
-	QUICEndpoint    *quic.Endpoint
-	QUICConfig      *quic.Config
+const (
+	DialUDP DialMode = 1 << iota
+	DialTCP
+	DialAuto DialMode = DialUDP | DialTCP
+)
+
+type DialMode uint
+
+func (m DialMode) String() string {
+	if m&DialUDP != 0 {
+		return "udp"
+	}
+	if m&DialTCP != 0 {
+		return "tcp"
+	}
+
+	return "auto"
 }
 
-func (d *DualDialer) DialContext(ctx context.Context, addr string) (Muxer, error) {
-	if mux, _ := d.dialQUIC(ctx, addr); mux != nil {
-		return mux, nil
-	}
-
-	return d.dialWebSocket(ctx, addr)
+type DialConfig struct {
+	DialMode        DialMode          // 连接模式
+	QUICConfig      *quic.Config      // QUIC 配置
+	WebSocketDialer *websocket.Dialer // websocket
+	WebSocketPath   string            // 默认 /api/tunnel
+	Parent          context.Context
 }
 
-func (d *DualDialer) dialQUIC(ctx context.Context, addr string) (Muxer, error) {
-	quicCfg := d.QUICConfig
-	if quicCfg == nil {
-		quicCfg = new(quic.Config)
-	}
-	if quicCfg.TLSConfig == nil {
-		quicCfg.TLSConfig = d.tlsConfig()
-	}
-
-	endpoint := d.QUICEndpoint
-	var tmpEndpoint *quic.Endpoint
-	if endpoint == nil {
-		end, err := quic.Listen("ucp", "", quicCfg)
-		if err != nil {
-			return nil, err
+func (dc *DialConfig) DialContext(ctx context.Context, addr string) (Muxer, error) {
+	if addr == "" {
+		addr = "127.0.0.1:443"
+	} else {
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			addr = net.JoinHostPort(addr, "443")
 		}
-		endpoint = end
-		tmpEndpoint = end
 	}
 
-	sess, err := endpoint.Dial(ctx, "udp", addr, quicCfg)
+	mode := dc.DialMode
+	if mode == DialUDP {
+		return dc.dialQUIC(ctx, addr)
+	} else if mode == DialTCP {
+		return dc.dialHTTP(ctx, addr)
+	}
+
+	mux, err := dc.dialQUIC(ctx, addr)
 	if err != nil {
-		if tmpEndpoint != nil {
-			_ = tmpEndpoint.Close(context.Background())
-		}
+		mux, err = dc.dialHTTP(ctx, addr)
+	}
+
+	return mux, err
+}
+
+func (dc *DialConfig) dialQUIC(ctx context.Context, addr string) (Muxer, error) {
+	cfg := dc.quicConfig()
+	endpoint, err := quic.Listen("udp", "", cfg)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := endpoint.Dial(ctx, "udp", addr, cfg)
+	if err != nil {
+		_ = endpoint.Close(context.Background())
 		return nil, err
 	}
 
-	laddr := sess.LocalAddr()
-	raddr := sess.RemoteAddr()
-	mux := &udpMux{
-		qc:    sess,
-		end:   endpoint,
-		laddr: &udpAddr{addr: laddr},
-		raddr: &udpAddr{addr: raddr},
+	parent := dc.Parent
+	if parent == nil {
+		parent = context.Background()
 	}
+	mux := NewQUIC(parent, conn, endpoint)
 
 	return mux, nil
 }
 
-func (d *DualDialer) dialWebSocket(ctx context.Context, addr string) (Muxer, error) {
-	dial := d.WebSocketDialer
-	if dial == nil {
-		tlsCfg := d.tlsConfig()
-		dial = &websocket.Dialer{
-			TLSClientConfig:  tlsCfg,
-			HandshakeTimeout: 30 * time.Second,
-		}
-	}
-
-	reqPath := d.WebSocketPath
-	if reqPath == "" {
-		reqPath = "/api/tunnel"
-	}
-	rawURL := &url.URL{
+func (dc *DialConfig) dialHTTP(ctx context.Context, addr string) (Muxer, error) {
+	reqURL := &url.URL{
 		Scheme: "wss",
 		Host:   addr,
-		Path:   reqPath,
+		Path:   dc.WebSocketPath,
 	}
-	strURL := rawURL.String()
+	if reqURL.Path == "" {
+		reqURL.Path = "/api/tunnel"
+	}
+	strURL := reqURL.String()
 
-	ws, _, err := dial.DialContext(ctx, strURL, nil)
+	wd := dc.webSocketDialer()
+	ws, _, err := wd.DialContext(ctx, strURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -101,17 +109,34 @@ func (d *DualDialer) dialWebSocket(ctx context.Context, addr string) (Muxer, err
 	return mux, nil
 }
 
-func (d *DualDialer) tlsConfig() *tls.Config {
-	if qc := d.QUICConfig; qc != nil {
-		if cfg := qc.TLSConfig; cfg != nil {
-			return cfg
+func (dc *DialConfig) quicConfig() *quic.Config {
+	qc := dc.QUICConfig
+	if qc == nil {
+		qc = &quic.Config{
+			KeepAlivePeriod: 10 * time.Second,
 		}
 	}
+	if qc.TLSConfig == nil {
+		qc.TLSConfig = dc.tlsConfig()
+	}
 
-	return &tls.Config{}
+	return qc
 }
 
-type udpAddr struct{ addr netip.AddrPort }
+func (dc *DialConfig) tlsConfig() *tls.Config {
+	return &tls.Config{
+		NextProtos:         []string{"http/1.1", "aegis"},
+		MinVersion:         tls.VersionTLS13, // quic 最低要求 TLS1.3
+		InsecureSkipVerify: true,
+	}
+}
 
-func (u udpAddr) Network() string { return "udp" }
-func (u udpAddr) String() string  { return u.addr.String() }
+func (dc *DialConfig) webSocketDialer() *websocket.Dialer {
+	if wd := dc.WebSocketDialer; wd != nil {
+		return wd
+	}
+
+	return &websocket.Dialer{
+		TLSClientConfig: dc.tlsConfig(),
+	}
+}
