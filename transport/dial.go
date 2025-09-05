@@ -78,7 +78,7 @@ func (d *DualDialer) dialWebSocket(ctx context.Context, addr string) (Muxer, err
 
 	reqPath := d.WebSocketPath
 	if reqPath == "" {
-		reqPath = "/api/channel"
+		reqPath = "/api/tunnel"
 	}
 	rawURL := &url.URL{
 		Scheme: "wss",

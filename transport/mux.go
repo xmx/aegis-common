@@ -35,6 +35,11 @@ type Muxer interface {
 	RemoteAddr() net.Addr
 }
 
+type AtomicMuxer interface {
+	Muxer
+	Store(Muxer)
+}
+
 type tcpMux struct {
 	sess *smux.Session
 }

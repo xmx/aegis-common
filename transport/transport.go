@@ -37,7 +37,7 @@ func newURL(host, path string) *url.URL {
 	}
 }
 
-func NewHTTPTransport(mux Muxer, internalFunc func(address string) bool) *http.Transport {
+func NewHTTPTransport(mux AtomicMuxer, internalFunc func(address string) bool) *http.Transport {
 	dial := new(net.Dialer)
 	return &http.Transport{
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
