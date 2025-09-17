@@ -3,8 +3,10 @@ package transport
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,7 +16,7 @@ import (
 const (
 	DialUDP DialMode = 1 << iota
 	DialTCP
-	DialAuto DialMode = DialUDP | DialTCP
+	DialAuto = DialUDP | DialTCP
 )
 
 type DialMode uint
@@ -30,6 +32,17 @@ func (m DialMode) String() string {
 	return "auto"
 }
 
+func ParseMode(s string) DialMode {
+	switch strings.ToLower(s) {
+	case "udp":
+		return DialUDP
+	case "tcp":
+		return DialTCP
+	default:
+		return DialAuto
+	}
+}
+
 type DialConfig struct {
 	DialMode        DialMode          // 连接模式
 	QUICConfig      *quic.Config      // QUIC 配置
@@ -38,9 +51,9 @@ type DialConfig struct {
 	Parent          context.Context
 }
 
-func (dc *DialConfig) DialContext(ctx context.Context, addr string) (Muxer, error) {
+func (dc *DialConfig) DialTimeout(addr string, timeout time.Duration) (Muxer, error) {
 	if addr == "" {
-		addr = "127.0.0.1:443"
+		addr = "localhost:443"
 	} else {
 		if _, _, err := net.SplitHostPort(addr); err != nil {
 			addr = net.JoinHostPort(addr, "443")
@@ -49,28 +62,31 @@ func (dc *DialConfig) DialContext(ctx context.Context, addr string) (Muxer, erro
 
 	mode := dc.DialMode
 	if mode == DialUDP {
-		return dc.dialQUIC(ctx, addr)
+		return dc.dialQUIC(addr, timeout)
 	} else if mode == DialTCP {
-		return dc.dialHTTP(ctx, addr)
+		return dc.dialHTTP(addr, timeout)
 	}
 
-	mux, err := dc.dialQUIC(ctx, addr)
-	if err != nil {
-		mux, err = dc.dialHTTP(ctx, addr)
+	tout := timeout / 2
+	mux, err := dc.dialQUIC(addr, tout)
+	if err == nil {
+		return mux, nil
 	}
 
-	return mux, err
+	errs := []error{err}
+	mux, err = dc.dialHTTP(addr, tout)
+	if err == nil {
+		return mux, nil
+	}
+	errs = append(errs, err)
+
+	return nil, errors.Join(errs...)
 }
 
-func (dc *DialConfig) dialQUIC(ctx context.Context, addr string) (Muxer, error) {
+func (dc *DialConfig) dialQUIC(addr string, timeout time.Duration) (Muxer, error) {
 	cfg := dc.quicConfig()
 	endpoint, err := quic.Listen("udp", "", cfg)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := endpoint.Dial(ctx, "udp", addr, cfg)
-	if err != nil {
-		_ = endpoint.Close(context.Background())
 		return nil, err
 	}
 
@@ -78,12 +94,23 @@ func (dc *DialConfig) dialQUIC(ctx context.Context, addr string) (Muxer, error) 
 	if parent == nil {
 		parent = context.Background()
 	}
+	ctx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
+
+	conn, err := endpoint.Dial(ctx, "udp", addr, cfg)
+	if err != nil {
+		cctx, ccancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = endpoint.Close(cctx)
+		ccancel()
+		return nil, err
+	}
+
 	mux := NewQUIC(parent, conn, endpoint)
 
 	return mux, nil
 }
 
-func (dc *DialConfig) dialHTTP(ctx context.Context, addr string) (Muxer, error) {
+func (dc *DialConfig) dialHTTP(addr string, timeout time.Duration) (Muxer, error) {
 	reqURL := &url.URL{
 		Scheme: "wss",
 		Host:   addr,
@@ -93,6 +120,13 @@ func (dc *DialConfig) dialHTTP(ctx context.Context, addr string) (Muxer, error) 
 		reqURL.Path = "/api/tunnel"
 	}
 	strURL := reqURL.String()
+
+	parent := dc.Parent
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
 
 	wd := dc.webSocketDialer()
 	ws, _, err := wd.DialContext(ctx, strURL, nil)
@@ -117,7 +151,11 @@ func (dc *DialConfig) quicConfig() *quic.Config {
 		}
 	}
 	if qc.TLSConfig == nil {
-		qc.TLSConfig = dc.tlsConfig()
+		tlsConfig := dc.tlsConfig()
+		if len(tlsConfig.NextProtos) == 0 {
+			tlsConfig.NextProtos = []string{"aegis"}
+		}
+		qc.TLSConfig = tlsConfig
 	}
 
 	return qc
@@ -125,7 +163,6 @@ func (dc *DialConfig) quicConfig() *quic.Config {
 
 func (dc *DialConfig) tlsConfig() *tls.Config {
 	return &tls.Config{
-		NextProtos:         []string{"http/1.1", "aegis"},
 		MinVersion:         tls.VersionTLS13, // quic 最低要求 TLS1.3
 		InsecureSkipVerify: true,
 	}

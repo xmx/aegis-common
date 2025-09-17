@@ -3,7 +3,6 @@ package shipx
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 	"github.com/xgfone/ship/v5"
 	"github.com/xmx/aegis-common/contract/problem"
 	"github.com/xmx/aegis-common/validation"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func NotFound(_ *ship.Context) error {
@@ -22,7 +20,7 @@ func NotFound(_ *ship.Context) error {
 
 func HandleErrorWithHost(host string) func(*ship.Context, error) {
 	return func(c *ship.Context, e error) {
-		statusCode, title, detail := UnpackError(c, e)
+		statusCode, title, detail := UnpackError(e)
 		pd := &problem.Details{
 			Host:     host,
 			Title:    title,
@@ -37,7 +35,7 @@ func HandleErrorWithHost(host string) func(*ship.Context, error) {
 }
 
 func HandleError(c *ship.Context, e error) {
-	statusCode, title, detail := UnpackError(c, e)
+	statusCode, title, detail := UnpackError(e)
 	pd := &problem.Details{
 		Host:     c.Host(),
 		Title:    title,
@@ -50,7 +48,7 @@ func HandleError(c *ship.Context, e error) {
 	_ = c.JSON(statusCode, pd)
 }
 
-func UnpackError(c *ship.Context, err error) (statusCode int, title string, detail string) {
+func UnpackError(err error) (statusCode int, title string, detail string) {
 	statusCode = http.StatusBadRequest
 	title = "请求错误"
 	detail = err.Error()
@@ -84,18 +82,6 @@ func UnpackError(c *ship.Context, err error) (statusCode int, title string, deta
 		limit := strconv.FormatInt(ce.Limit, 10)
 		detail = "请求报文超过 " + limit + " 个字节限制"
 		statusCode = http.StatusRequestEntityTooLarge
-	case mongo.WriteException:
-		if ce.HasErrorCode(11000) {
-			detail = "数据已存在"
-		}
-	default:
-		switch {
-		case errors.Is(err, mongo.ErrNoDocuments):
-			detail = "数据不存在"
-		case errors.Is(err, ship.ErrSessionNotExist), errors.Is(err, ship.ErrInvalidSession):
-			statusCode = http.StatusUnauthorized
-			detail = "认证无效"
-		}
 	}
 
 	return
