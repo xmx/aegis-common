@@ -21,6 +21,10 @@ func NewAgentURL(id string, path string) *url.URL {
 	return newURL(id+".aegis.internal", path)
 }
 
+func NewBrokerIDURL(id, path string) *url.URL {
+	return newURL(id+"."+BrokerHost, path)
+}
+
 func NewBrokerURL(path string) *url.URL {
 	return newURL(BrokerHost, path)
 }
