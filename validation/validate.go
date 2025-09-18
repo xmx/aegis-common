@@ -1,6 +1,9 @@
 package validation
 
 import (
+	"reflect"
+	"strings"
+
 	arlocale "github.com/go-playground/locales/ar"
 	enlocale "github.com/go-playground/locales/en"
 	eslocale "github.com/go-playground/locales/es"
@@ -25,6 +28,7 @@ import (
 
 func New() *Validate {
 	valid := validator.New()
+	valid.RegisterTagNameFunc(jsonTag)
 
 	arloc := arlocale.New()
 	enloc := enlocale.New()
@@ -141,4 +145,14 @@ func (v *Validate) RegisterStructValidationCtx(fn validator.StructLevelFuncCtx, 
 func (v *Validate) defaultTranslation(utt ut.Translator, fe validator.FieldError) string {
 	str, _ := utt.T(fe.Tag(), fe.Field())
 	return str
+}
+
+func jsonTag(f reflect.StructField) string {
+	str := f.Tag.Get("json")
+	cut, _, _ := strings.Cut(str, ",")
+	if cut != "-" && cut != "" {
+		return cut
+	}
+
+	return f.Name
 }

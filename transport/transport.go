@@ -13,16 +13,18 @@ import (
 //  agent -> broker: broker.aegis.internal
 
 const (
-	BrokerHost = "broker.aegis.internal"
-	ServerHost = "server.aegis.internal"
+	AgentHostSuffix  = ".agent.aegis.internal"
+	BrokerHost       = "broker.aegis.internal"
+	BrokerHostSuffix = "." + BrokerHost
+	ServerHost       = "server.aegis.internal"
 )
 
 func NewAgentURL(id string, path string) *url.URL {
-	return newURL(id+".aegis.internal", path)
+	return newURL(id+AgentHostSuffix, path)
 }
 
 func NewBrokerIDURL(id, path string) *url.URL {
-	return newURL(id+"."+BrokerHost, path)
+	return newURL(id+BrokerHostSuffix, path)
 }
 
 func NewBrokerURL(path string) *url.URL {
