@@ -14,14 +14,13 @@ type Card struct {
 }
 
 func Cards() []*Card {
-	//faces, err := net.Interfaces()
-	ifaces, err := net.Interfaces()
+	faces, err := net.Interfaces()
 	if err != nil {
 		return nil
 	}
 
 	var results []*Card
-	for _, iface := range ifaces {
+	for _, iface := range faces {
 		// 跳过未启用或环回接口
 		if iface.Flags&net.FlagUp == 0 ||
 			iface.Flags&net.FlagLoopback != 0 {
