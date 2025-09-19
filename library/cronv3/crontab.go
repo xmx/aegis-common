@@ -90,6 +90,12 @@ func (ctb *Crontab) AddSchedule(id string, sched cron.Schedule, cmd func()) (boo
 	return ctb.addTask(th)
 }
 
+func (ctb *Crontab) Remove(id string) {
+	ctb.mutex.Lock()
+	_ = ctb.remove(id)
+	ctb.mutex.Unlock()
+}
+
 func (ctb *Crontab) addTask(th *taskHandler) (bool, error) {
 	info := th.info
 	id, imm, sched := info.ID, info.Immediate, info.CronSched
@@ -146,4 +152,39 @@ func (ctb *Crontab) addSchedule(id string, spec cron.Schedule, job cron.Job) boo
 	ctb.mutex.Unlock()
 
 	return exists
+}
+
+// remove 通过名字删除定时任务。
+func (ctb *Crontab) remove(name string) bool {
+	if id, ok := ctb.uniq[name]; ok {
+		ctb.crond.Remove(id)
+		delete(ctb.uniq, name)
+		return true
+	}
+
+	return false
+}
+
+// removeByID 通过 cron.EntryID 删除定时任务。
+// 如果删除成功返回任务名和成功标志。
+func (ctb *Crontab) removeByID(id cron.EntryID) (string, bool) {
+	for name, eid := range ctb.uniq {
+		if id == eid {
+			ctb.remove(name)
+			return name, true
+		}
+	}
+
+	return "", false
+}
+
+// Cleanup 清理哪些不再执行的定时任务，该功能主要针对 [NewTimingSchedule] 类型的定时任务。
+func (ctb *Crontab) cleanup() {
+	ctb.mutex.Lock()
+	for _, ent := range ctb.crond.Entries() {
+		if ent.Next.IsZero() {
+			_, _ = ctb.removeByID(ent.ID)
+		}
+	}
+	ctb.mutex.Unlock()
 }
