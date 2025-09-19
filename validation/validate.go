@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"context"
 	"reflect"
 	"strings"
 
@@ -90,6 +91,10 @@ func (v *Validate) Validate(val any) error {
 	}
 }
 
+func (v *Validate) StructCtx(ctx context.Context, val any) error {
+	return v.valid.StructCtx(ctx, val)
+}
+
 func (v *Validate) RegisterValidationCtx(tag string, fn validator.FuncCtx, callValidationEvenIfNull ...bool) error {
 	return v.valid.RegisterValidationCtx(tag, fn, callValidationEvenIfNull...)
 }
@@ -98,7 +103,7 @@ func (v *Validate) RegisterValidationTranslation(tag string, trans ut.Translator
 	return v.valid.RegisterTranslation(tag, trans, registerFn, translationFn)
 }
 
-type CustomValidatorFunc func() (tag string, valid validator.FuncCtx, trans validator.RegisterTranslationsFunc, tranFunc validator.TranslationFunc)
+type CustomValidatorFunc func() (tag string, valid validator.FuncCtx, trans validator.RegisterTranslationsFunc)
 
 func (v *Validate) RegisterCustomValidations(customs []CustomValidatorFunc) error {
 	for _, custom := range customs {
@@ -114,7 +119,7 @@ func (v *Validate) RegisterCustomValidation(custom CustomValidatorFunc) error {
 	if custom == nil {
 		return nil
 	}
-	tag, validationFunc, regTranFunc, tranFunc := custom()
+	tag, validationFunc, translationsFunc := custom()
 	if tag == "" {
 		return nil
 	}
@@ -124,12 +129,9 @@ func (v *Validate) RegisterCustomValidation(custom CustomValidatorFunc) error {
 			return err
 		}
 	}
-	if regTranFunc != nil {
-		if tranFunc == nil {
-			tranFunc = v.defaultTranslation
-		}
+	if translationsFunc != nil {
 		for _, tran := range v.trans {
-			if err := v.RegisterValidationTranslation(tag, tran, regTranFunc, tranFunc); err != nil {
+			if err := v.RegisterValidationTranslation(tag, tran, translationsFunc, v.defaultTranslation); err != nil {
 				return err
 			}
 		}

@@ -4,44 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"net/url"
 )
-
-// server -> broker: <id>.broker.aegis.internal
-// broker -> server: server.aegis.internal
-//  broker -> agent: <id>.agent.aegis.internal
-//  agent -> broker: broker.aegis.internal
-
-const (
-	AgentHostSuffix  = ".agent.aegis.internal"
-	BrokerHost       = "broker.aegis.internal"
-	BrokerHostSuffix = "." + BrokerHost
-	ServerHost       = "server.aegis.internal"
-)
-
-func NewAgentURL(id string, path string) *url.URL {
-	return newURL(id+AgentHostSuffix, path)
-}
-
-func NewBrokerIDURL(id, path string) *url.URL {
-	return newURL(id+BrokerHostSuffix, path)
-}
-
-func NewBrokerURL(path string) *url.URL {
-	return newURL(BrokerHost, path)
-}
-
-func NewServerURL(path string) *url.URL {
-	return newURL(ServerHost, path)
-}
-
-func newURL(host, path string) *url.URL {
-	return &url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   path,
-	}
-}
 
 func NewHTTPTransport(ml MuxLoader, inner string) *http.Transport {
 	dial := new(net.Dialer)

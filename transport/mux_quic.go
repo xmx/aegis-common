@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"time"
 
 	"golang.org/x/net/quic"
 )
@@ -65,8 +66,10 @@ func (q *quicMux) Addr() net.Addr {
 func (q *quicMux) Close() error {
 	err := q.conn.Close()
 	if end := q.endpoint; end != nil {
-		_ = end.Close(context.Background())
-		end = nil
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = end.Close(ctx)
+		cancel()
+		q.endpoint = nil
 	}
 
 	return err

@@ -6,45 +6,21 @@ import (
 	"errors"
 	"net"
 	"net/url"
-	"strings"
+	"slices"
 	"time"
 
 	"github.com/gorilla/websocket"
+	quicgo "github.com/quic-go/quic-go"
 	"golang.org/x/net/quic"
 )
 
 const (
-	DialUDP DialMode = 1 << iota
-	DialTCP
-	DialAuto = DialUDP | DialTCP
+	protocolTCP = "tcp"
+	protocolUDP = "udp"
 )
 
-type DialMode uint
-
-func (m DialMode) String() string {
-	if m&DialUDP != 0 {
-		return "udp"
-	}
-	if m&DialTCP != 0 {
-		return "tcp"
-	}
-
-	return "auto"
-}
-
-func ParseMode(s string) DialMode {
-	switch strings.ToLower(s) {
-	case "udp":
-		return DialUDP
-	case "tcp":
-		return DialTCP
-	default:
-		return DialAuto
-	}
-}
-
 type DialConfig struct {
-	DialMode        DialMode          // 连接模式
+	Protocols       []string          // 连接协议
 	QUICConfig      *quic.Config      // QUIC 配置
 	WebSocketDialer *websocket.Dialer // websocket
 	WebSocketPath   string            // 默认 /api/tunnel
@@ -59,26 +35,34 @@ func (dc *DialConfig) DialTimeout(addr string, timeout time.Duration) (Muxer, er
 			addr = net.JoinHostPort(addr, "443")
 		}
 	}
-
-	mode := dc.DialMode
-	if mode == DialUDP {
-		return dc.dialQUIC(addr, timeout)
-	} else if mode == DialTCP {
-		return dc.dialHTTP(addr, timeout)
+	modes := slices.DeleteFunc(dc.Protocols, func(s string) bool {
+		return s != protocolUDP && s != protocolTCP
+	})
+	if len(modes) == 0 {
+		modes = []string{protocolUDP, protocolTCP}
 	}
+	num := len(modes)
+	pout := timeout / time.Duration(num)
 
-	tout := timeout / 2
-	mux, err := dc.dialQUIC(addr, tout)
-	if err == nil {
-		return mux, nil
+	var errs []error
+	for _, mode := range modes {
+		switch mode {
+		case protocolTCP:
+			mux, err := dc.dialHTTP(addr, pout)
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				return mux, nil
+			}
+		default:
+			mux, err := dc.dialQUICGo(addr, pout)
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				return mux, nil
+			}
+		}
 	}
-
-	errs := []error{err}
-	mux, err = dc.dialHTTP(addr, tout)
-	if err == nil {
-		return mux, nil
-	}
-	errs = append(errs, err)
 
 	return nil, errors.Join(errs...)
 }
@@ -138,6 +122,31 @@ func (dc *DialConfig) dialHTTP(addr string, timeout time.Duration) (Muxer, error
 	if err != nil {
 		_ = conn.Close()
 		return nil, err
+	}
+
+	return mux, nil
+}
+
+func (dc *DialConfig) dialQUICGo(addr string, timeout time.Duration) (Muxer, error) {
+	tlsConfig := dc.tlsConfig()
+	if len(tlsConfig.NextProtos) == 0 {
+		tlsConfig.NextProtos = []string{"aegis"}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	conn, err := quicgo.DialAddr(ctx, addr, tlsConfig, &quicgo.Config{
+		KeepAlivePeriod: 10 * time.Second,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	laddr, raddr := conn.LocalAddr(), conn.RemoteAddr()
+	mux := &quicGoMux{
+		conn:  conn,
+		laddr: laddr,
+		raddr: raddr,
 	}
 
 	return mux, nil

@@ -22,14 +22,11 @@ func (q *quicConn) Read(b []byte) (int, error) {
 
 func (q *quicConn) Write(b []byte) (int, error) {
 	n, err := q.stm.Write(b)
-	if err != nil {
-		return n, err
-	}
 	if n > 0 {
 		_ = q.stm.Flush()
 	}
 
-	return n, nil
+	return n, err
 }
 
 func (q *quicConn) Close() error {
@@ -68,5 +65,5 @@ func (q *quicConn) SetWriteDeadline(t time.Time) error {
 
 type quicAddr struct{ addr netip.AddrPort }
 
-func (q quicAddr) Network() string { return "quic" }
+func (q quicAddr) Network() string { return "udp" }
 func (q quicAddr) String() string  { return q.addr.String() }
