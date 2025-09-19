@@ -2,18 +2,10 @@ package network
 
 import (
 	"net"
+	"slices"
 )
 
-type Card struct {
-	Name  string   `json:"name"`
-	Index int      `json:"index"`
-	MTU   int      `json:"mtu"`
-	IPv4  []string `json:"ipv4"`
-	IPv6  []string `json:"ipv6"`
-	MAC   string   `json:"mac"`
-}
-
-func Cards() []*Card {
+func Interfaces() Cards {
 	faces, err := net.Interfaces()
 	if err != nil {
 		return nil
@@ -73,4 +65,41 @@ func Cards() []*Card {
 	}
 
 	return results
+}
+
+type Card struct {
+	Name  string   `json:"name"`
+	Index int      `json:"index"`
+	MTU   int      `json:"mtu"`
+	IPv4  []string `json:"ipv4"`
+	IPv6  []string `json:"ipv6"`
+	MAC   string   `json:"mac"`
+}
+
+func (c Card) equal(v *Card) bool {
+	if !(c.Name == v.Name &&
+		c.Index == v.Index &&
+		c.MTU == v.MTU &&
+		c.MAC == v.MAC) {
+		return false
+	}
+
+	return slices.Equal(c.IPv4, v.IPv4) &&
+		slices.Equal(c.IPv6, v.IPv6)
+}
+
+type Cards []*Card
+
+func (cs Cards) Equal(vs Cards) bool {
+	if len(cs) != len(vs) {
+		return false
+	}
+
+	for i, c := range cs {
+		if !c.equal(vs[i]) {
+			return false
+		}
+	}
+
+	return true
 }

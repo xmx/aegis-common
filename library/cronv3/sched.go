@@ -46,9 +46,9 @@ func (st *specificTimes) Next(now time.Time) time.Time {
 // 不同的级别对应的 cron 表达式位数不一样。
 // 此方式可以自适应不同级别的 cron/v3，为了两者兼容，所以限制最小间隔为一分钟。
 func NewInterval(du time.Duration) cron.Schedule {
-	if du < time.Minute {
-		du = time.Minute
-	}
+	//if du < time.Minute {
+	//	du = time.Minute
+	//}
 
 	return &intervalTimes{
 		du: du,
