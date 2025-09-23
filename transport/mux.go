@@ -13,6 +13,10 @@ type Server interface {
 	Serve(net.Listener) error
 }
 
+type Dialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
+}
+
 type Muxer interface {
 	// Open 打开一个子流。
 	Open(ctx context.Context) (net.Conn, error)

@@ -51,6 +51,8 @@ func (qm *quicGoMux) RemoteAddr() net.Addr {
 
 func (qm *quicGoMux) makeConn(stm *quic.Stream) net.Conn {
 	return &quicGoConn{
-		stm: stm,
+		stm:   stm,
+		laddr: qm.laddr,
+		raddr: qm.raddr,
 	}
 }
