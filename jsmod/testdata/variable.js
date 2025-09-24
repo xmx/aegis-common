@@ -1,12 +1,12 @@
 import console from 'console'
-import config from 'aegis/config'
+import crontab from 'crontab'
+import time from 'time'
+import runtime from 'runtime'
+import os from 'os'
 
-console.log("开始初始化配置")
+const handle = crontab.addJob('*/3 * * * * *', function () {
+    console.log(`${os.getpid()} - ${runtime.numGoroutine()}`)
+})
 
-const cfg = {
-    addr: 'xxxxxxx',
-}
-
-config.set(cfg)
-
-console.log("配置初始化完毕")
+console.log(handle.id())
+handle.wait()

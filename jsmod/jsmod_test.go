@@ -2,10 +2,13 @@ package jsmod_test
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 
+	"github.com/robfig/cron/v3"
 	"github.com/xmx/aegis-common/jsmod"
+	"github.com/xmx/aegis-common/library/cronv3"
 	"github.com/xmx/jsos/jsvm"
 )
 
@@ -19,8 +22,10 @@ func TestVariable(t *testing.T) {
 	code := string(dat)
 
 	vm := newVM()
-	varb := jsmod.NewVariable[VarConfig]("aegis/config")
-	vm.Require().Register(varb)
+	crond := cronv3.New(context.Background(), slog.Default(), cron.WithSeconds())
+	crond.Start()
+	crontab := jsmod.NewCrontab(crond)
+	vm.Require().Register(crontab)
 
 	val, err := vm.RunScript(filename, code)
 	if err != nil {
@@ -28,7 +33,6 @@ func TestVariable(t *testing.T) {
 		return
 	}
 	t.Log(val)
-	t.Log(varb.Get())
 }
 
 func newVM() jsvm.Engineer {
@@ -38,8 +42,4 @@ func newVM() jsvm.Engineer {
 	stdout.Attach(os.Stdout)
 
 	return vm
-}
-
-type VarConfig struct {
-	Addr string `json:"addr"`
 }
