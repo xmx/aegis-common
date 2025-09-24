@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/dop251/goja"
 	"github.com/grafana/sobek"
 	"github.com/xmx/jsos/jsvm"
 )
@@ -82,9 +81,9 @@ func (mod *stdConsole) parse(buf *bytes.Buffer, val sobek.Value) error {
 	case []byte:
 		str := base64.StdEncoding.EncodeToString(v)
 		buf.WriteString(str)
-	case func(goja.FunctionCall) goja.Value:
+	case func(sobek.FunctionCall) sobek.Value:
 		buf.WriteString("<Function>")
-	case goja.ArrayBuffer:
+	case sobek.ArrayBuffer:
 		bs := v.Bytes()
 		str := base64.StdEncoding.EncodeToString(bs)
 		buf.WriteString(str)

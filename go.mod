@@ -4,7 +4,6 @@ go 1.25.1
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.27.0
