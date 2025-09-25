@@ -3,7 +3,7 @@ package jsmod
 import (
 	"runtime"
 
-	"github.com/xmx/jsos/jsvm"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
 func NewRuntime() jsvm.Module {

@@ -3,7 +3,7 @@ package jsmod
 import (
 	"context"
 
-	"github.com/xmx/jsos/jsvm"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
 func NewContext() jsvm.Module {

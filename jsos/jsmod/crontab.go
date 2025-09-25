@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/grafana/sobek"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 	"github.com/xmx/aegis-common/library/cronv3"
-	"github.com/xmx/jsos/jsvm"
 )
 
 func NewCrontab(crond *cronv3.Crontab) jsvm.Module {

@@ -3,7 +3,7 @@ package jsmod
 import (
 	"net/url"
 
-	"github.com/xmx/jsos/jsvm"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
 func NewURL() jsvm.Module {

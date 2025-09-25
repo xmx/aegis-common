@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/grafana/sobek"
-	"github.com/xmx/jsos/jsvm"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
 func NewConsole() jsvm.Module {

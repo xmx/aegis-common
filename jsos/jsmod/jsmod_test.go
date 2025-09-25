@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/robfig/cron/v3"
-	"github.com/xmx/aegis-common/jsmod"
+	"github.com/xmx/aegis-common/jsos/jsmod"
+	"github.com/xmx/aegis-common/jsos/jsvm"
 	"github.com/xmx/aegis-common/library/cronv3"
-	"github.com/xmx/jsos/jsvm"
 )
 
 func TestVariable(t *testing.T) {
@@ -37,7 +37,7 @@ func TestVariable(t *testing.T) {
 
 func newVM() jsvm.Engineer {
 	vm := jsvm.New(context.Background())
-	vm.Require().Register(jsmod.Modules()...)
+	vm.Require().Registers(jsmod.Modules())
 	stdout, _ := vm.Output()
 	stdout.Attach(os.Stdout)
 

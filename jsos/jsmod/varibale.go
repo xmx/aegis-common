@@ -1,6 +1,6 @@
 package jsmod
 
-import "github.com/xmx/jsos/jsvm"
+import "github.com/xmx/aegis-common/jsos/jsvm"
 
 func NewVariable[T any](modname string) *Variable[T] {
 	return &Variable[T]{
