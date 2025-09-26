@@ -1,4 +1,4 @@
-package transport
+package tunurl
 
 import "net/url"
 
@@ -15,35 +15,35 @@ const (
 	AgentBrokerHostSuffix = ".agent" + BrokerHostSuffix
 )
 
-// NewServerURL broker/agent -> server
+// ToServer broker/agent -> server
 //
 // server.aegis.internal
-func NewServerURL(pth string, ws ...bool) *url.URL {
+func ToServer(pth string, ws ...bool) *url.URL {
 	return buildURL(ServerHost, pth, ws...)
 }
 
-// NewServerBrokerURL server -> broker
+// ServerToBroker server -> broker
 //
 // <broker_id>.broker.aegis.internal
-func NewServerBrokerURL(bid string, pth string, ws ...bool) *url.URL {
+func ServerToBroker(bid string, pth string, ws ...bool) *url.URL {
 	return buildURL(bid+BrokerHostSuffix, pth, ws...)
 }
 
-// NewBrokerURL agent -> broker
+// AgentToBroker agent -> broker
 //
 // broker.aegis.internal
-func NewBrokerURL(pth string, ws ...bool) *url.URL {
+func AgentToBroker(pth string, ws ...bool) *url.URL {
 	return buildURL(BrokerHost, pth, ws...)
 }
 
-// NewBrokerAgentURL broker -> agent
+// BrokerToAgent broker -> agent
 //
 // <agentID>.agent.aegis.internal
-func NewBrokerAgentURL(agentID string, pth string, ws ...bool) *url.URL {
+func BrokerToAgent(agentID string, pth string, ws ...bool) *url.URL {
 	return buildURL(agentID+AgentHostSuffix, pth, ws...)
 }
 
-func NewServerBrokerAgentURL(agentID string, pth string, ws ...bool) *url.URL {
+func ServerToAgent(agentID string, pth string, ws ...bool) *url.URL {
 	return buildURL(agentID+AgentBrokerHostSuffix, pth, ws...)
 }
 
