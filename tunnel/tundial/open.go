@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
-	"net/netip"
 	"net/url"
 	"time"
 
@@ -225,41 +224,4 @@ func (c Config) quicGoConfig() *quicgo.Config {
 	return &quicgo.Config{
 		KeepAlivePeriod: 10 * time.Second,
 	}
-}
-
-func (c Config) makeQUICGo(conn *quicgo.Conn) *quicGo {
-	return &quicGo{
-		conn:   conn,
-		laddr:  conn.LocalAddr(),
-		raddr:  conn.RemoteAddr(),
-		parent: c.Parent,
-	}
-}
-
-func (c Config) makeQUIC(conn *quic.Conn, endpoint *quic.Endpoint) *quicStd {
-	toUDPAddrFunc := func(ap netip.AddrPort) *net.UDPAddr {
-		addr, port := ap.Addr(), ap.Port()
-
-		return &net.UDPAddr{
-			IP:   addr.AsSlice(),
-			Port: int(port),
-			Zone: addr.Zone(),
-		}
-	}
-	laddr, raddr := conn.LocalAddr(), conn.RemoteAddr()
-
-	return &quicStd{
-		conn:     conn,
-		laddr:    toUDPAddrFunc(laddr),
-		raddr:    toUDPAddrFunc(raddr),
-		endpoint: endpoint,
-		parent:   c.Parent,
-	}
-}
-
-func (c Config) makeAtomic(m Muxer) AtomicMuxer {
-	am := new(atomicMuxer)
-	am.Store(m)
-
-	return am
 }
