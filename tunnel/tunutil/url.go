@@ -1,4 +1,4 @@
-package tunurl
+package tunutil
 
 import "net/url"
 
