@@ -4,8 +4,8 @@ import "net/url"
 
 // server -> broker: <id>.broker.aegis.internal
 // broker -> server: server.aegis.internal
-//  broker -> agent: <id>.agent.aegis.internal
-//  agent -> broker: broker.aegis.internal
+// broker -> agent:  <id>.agent.aegis.internal
+// agent -> broker:  broker.aegis.internal
 
 const (
 	AgentHostSuffix       = ".agent.aegis.internal"

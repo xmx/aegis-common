@@ -1,4 +1,4 @@
-package client
+package tundial
 
 import (
 	"context"
@@ -9,7 +9,11 @@ import (
 	"golang.org/x/net/quic"
 )
 
-func newQUIC(parent context.Context, conn *quic.Conn) *quicStd {
+// NewStdQUIC 标准 QUIC 库还在实验阶段，不稳定。
+func NewStdQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn) Muxer {
+	if parent == nil {
+		parent = context.Background()
+	}
 	toUDPAddr := func(ap netip.AddrPort) *net.UDPAddr {
 		addr, port := ap.Addr(), ap.Port()
 
@@ -20,16 +24,12 @@ func newQUIC(parent context.Context, conn *quic.Conn) *quicStd {
 		}
 	}
 
-	if parent == nil {
-		parent = context.Background()
-	}
-	laddr, raddr := conn.LocalAddr(), conn.RemoteAddr()
-
 	return &quicStd{
-		conn:   conn,
-		laddr:  toUDPAddr(laddr),
-		raddr:  toUDPAddr(raddr),
-		parent: parent,
+		conn:     conn,
+		laddr:    toUDPAddr(conn.LocalAddr()),
+		raddr:    toUDPAddr(conn.RemoteAddr()),
+		endpoint: endpoint,
+		parent:   parent,
 	}
 }
 

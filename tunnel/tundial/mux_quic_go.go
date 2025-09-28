@@ -1,4 +1,4 @@
-package client
+package tundial
 
 import (
 	"context"
@@ -6,6 +6,19 @@ import (
 
 	"github.com/quic-go/quic-go"
 )
+
+func NewQUIC(parent context.Context, conn *quic.Conn) Muxer {
+	if parent == nil {
+		parent = context.Background()
+	}
+
+	return &quicGo{
+		conn:   conn,
+		laddr:  conn.LocalAddr(),
+		raddr:  conn.RemoteAddr(),
+		parent: parent,
+	}
+}
 
 type quicGo struct {
 	conn   *quic.Conn

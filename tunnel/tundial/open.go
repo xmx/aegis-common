@@ -1,4 +1,4 @@
-package client
+package tundial
 
 import (
 	"context"
@@ -64,13 +64,13 @@ func Open(openCfg Config) (mux Muxer, err error) {
 
 func (c Config) open(proto, addr string) (Muxer, error) {
 	if proto == "tcp" {
-		return c.openTCP(addr)
+		return c.openHTTP(addr)
 	} else {
-		return c.openUDP(addr)
+		return c.openQUIC(addr)
 	}
 }
 
-func (c Config) openTCP(addr string) (Muxer, error) {
+func (c Config) openHTTP(addr string) (Muxer, error) {
 	reqURL := &url.URL{
 		Scheme: "wss",
 		Host:   addr,
@@ -96,7 +96,7 @@ func (c Config) openTCP(addr string) (Muxer, error) {
 	return mux, nil
 }
 
-func (c Config) openUDP(addr string) (Muxer, error) {
+func (c Config) openQUIC(addr string) (Muxer, error) {
 	ctx, cancel := c.context()
 	defer cancel()
 
@@ -105,13 +105,13 @@ func (c Config) openUDP(addr string) (Muxer, error) {
 	if err != nil {
 		return nil, err
 	}
-	mux := c.makeQUICGo(conn)
+	mux := NewQUIC(c.Parent, conn)
 
 	return mux, nil
 }
 
-// openQUIC 标准库的 quic 存在 bug，经常性的 context canceled。
-func (c Config) openQUIC(addr string) (Muxer, error) {
+// openStdQUIC 标准库的 quic 存在 bug，经常性的 context canceled。
+func (c Config) openStdQUIC(addr string) (Muxer, error) {
 	endpoint, err := quic.Listen("udp", addr, nil)
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (c Config) openQUIC(addr string) (Muxer, error) {
 
 		return nil, err1
 	}
-	mux := c.makeQUIC(conn, endpoint)
+	mux := NewStdQUIC(c.Parent, endpoint, conn)
 
 	return mux, nil
 }
