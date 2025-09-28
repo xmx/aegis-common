@@ -43,3 +43,12 @@ func newVM() jsvm.Engineer {
 
 	return vm
 }
+
+func TestPrint(t *testing.T) {
+	vm := newVM()
+	vm.Require().Registers(jsmod.Modules())
+	stdout, _ := vm.Output()
+	stdout.Attach(os.Stdout)
+
+	vm.RunScript("s", "import console from 'console'\nconsole.log('hello world')\nconsole.log('hello world')")
+}

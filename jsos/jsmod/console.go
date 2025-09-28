@@ -3,7 +3,8 @@ package jsmod
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -23,31 +24,38 @@ type stdConsole struct {
 func (mod *stdConsole) Preload(eng jsvm.Engineer) (string, any, bool) {
 	mod.eng = eng
 	vals := map[string]any{
-		"debug": mod.stdout,
-		"info":  mod.stdout,
-		"warn":  mod.stdout,
-		"error": mod.stdout,
-		"log":   mod.stdout,
+		"log":   mod.write(false),
+		"debug": mod.write(false),
+		"info":  mod.write(false),
+		"warn":  mod.write(false),
+		"error": mod.write(true),
 	}
 
 	return "console", vals, false
 }
 
-func (mod *stdConsole) stdout(call sobek.FunctionCall) sobek.Value {
-	rt := mod.eng.Runtime()
-	stdout, _ := mod.eng.Output()
-	msg, err := mod.format(call)
-	if err != nil {
-		return rt.NewGoError(err)
-	}
-	if _, err = stdout.Write(msg); err != nil {
-		return rt.NewGoError(err)
-	}
+func (mod *stdConsole) write(writeErr bool) func(call sobek.FunctionCall) sobek.Value {
+	return func(call sobek.FunctionCall) sobek.Value {
+		rt := mod.eng.Runtime()
+		buf, err := mod.format(call)
+		if err != nil {
+			return rt.NewGoError(err)
+		}
+		stdout, stderr := mod.eng.Output()
+		if writeErr {
+			_, err = buf.WriteTo(stderr)
+		} else {
+			_, err = buf.WriteTo(stdout)
+		}
+		if err != nil {
+			return rt.NewGoError(err)
+		}
 
-	return sobek.Undefined()
+		return sobek.Undefined()
+	}
 }
 
-func (mod *stdConsole) format(call sobek.FunctionCall) ([]byte, error) {
+func (mod *stdConsole) format(call sobek.FunctionCall) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	for _, arg := range call.Arguments {
 		if err := mod.parse(buf, arg); err != nil {
@@ -56,7 +64,7 @@ func (mod *stdConsole) format(call sobek.FunctionCall) ([]byte, error) {
 	}
 	buf.WriteByte('\n')
 
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 func (mod *stdConsole) parse(buf *bytes.Buffer, val sobek.Value) error {
@@ -105,12 +113,14 @@ func (*stdConsole) reflectParse(buf *bytes.Buffer, v any) error {
 		buf.WriteString(strconv.FormatFloat(vof.Float(), 'g', -1, 64))
 	case reflect.Bool:
 		buf.WriteString(strconv.FormatBool(vof.Bool()))
+	case reflect.Func:
+		buf.WriteString("<Function>")
 	default:
-		tmp := new(bytes.Buffer)
-		if err := json.NewEncoder(tmp).Encode(v); err == nil && tmp.Len() != 0 {
-			_, _ = buf.ReadFrom(tmp)
+		enc := jsontext.NewEncoder(buf)
+		if err := json.MarshalEncode(enc, v); err == nil {
 			return nil
 		}
+
 		vts := vof.Type().String()
 		buf.WriteString(vts)
 	}
