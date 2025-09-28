@@ -31,16 +31,26 @@ type AtomicMuxer interface {
 	Store(mux Muxer) (old Muxer)
 }
 
+func MakeAtomic(m Muxer) AtomicMuxer {
+	if am, yes := m.(AtomicMuxer); yes {
+		return am
+	}
+	am := new(atomicMuxer)
+	_ = am.Store(m)
+
+	return am
+}
+
 type atomicMuxer struct {
 	val atomic.Pointer[atomicMuxHolder]
 }
 
-func (a *atomicMuxer) Accept() (net.Conn, error)                  { return a.load().Accept() }
-func (a *atomicMuxer) Close() error                               { return a.load().Close() }
-func (a *atomicMuxer) Addr() net.Addr                             { return a.load().Addr() }
-func (a *atomicMuxer) Open(ctx context.Context) (net.Conn, error) { return a.load().Open(ctx) }
-func (a *atomicMuxer) RemoteAddr() net.Addr                       { return a.load().RemoteAddr() }
-func (a *atomicMuxer) Protocol() (string, string)                 { return a.load().Protocol() }
+func (a *atomicMuxer) Accept() (net.Conn, error)                  { return a.get().Accept() }
+func (a *atomicMuxer) Close() error                               { return a.get().Close() }
+func (a *atomicMuxer) Addr() net.Addr                             { return a.get().Addr() }
+func (a *atomicMuxer) Open(ctx context.Context) (net.Conn, error) { return a.get().Open(ctx) }
+func (a *atomicMuxer) RemoteAddr() net.Addr                       { return a.get().RemoteAddr() }
+func (a *atomicMuxer) Protocol() (string, string)                 { return a.get().Protocol() }
 
 func (a *atomicMuxer) Store(mux Muxer) Muxer {
 	m := &atomicMuxHolder{m: mux}
@@ -51,17 +61,11 @@ func (a *atomicMuxer) Store(mux Muxer) Muxer {
 	return nil
 }
 
-func (a *atomicMuxer) load() Muxer {
+func (a *atomicMuxer) get() Muxer {
 	m := a.val.Load()
 	return m.get()
 }
 
-type atomicMuxHolder struct {
-	m Muxer
-}
+type atomicMuxHolder struct{ m Muxer }
 
-func (m atomicMuxHolder) get() Muxer {
-	return m.m
-}
-
-// tunnelmux
+func (m atomicMuxHolder) get() Muxer { return m.m }

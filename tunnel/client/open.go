@@ -49,7 +49,7 @@ type Config struct {
 	Parent context.Context `json:"-"`
 }
 
-func Open(openCfg Config) (mux AtomicMuxer, err error) {
+func Open(openCfg Config) (mux Muxer, err error) {
 	c := openCfg.preformat()
 	for _, proto := range c.Protocols {
 		for _, addr := range c.Addresses {
@@ -62,21 +62,12 @@ func Open(openCfg Config) (mux AtomicMuxer, err error) {
 	return
 }
 
-func (c Config) open(proto, addr string) (AtomicMuxer, error) {
-	var mux Muxer
-	var err error
+func (c Config) open(proto, addr string) (Muxer, error) {
 	if proto == "tcp" {
-		mux, err = c.openTCP(addr)
+		return c.openTCP(addr)
 	} else {
-		mux, err = c.openUDP(addr)
+		return c.openUDP(addr)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-	amux := c.makeAtomic(mux)
-
-	return amux, nil
 }
 
 func (c Config) openTCP(addr string) (Muxer, error) {
