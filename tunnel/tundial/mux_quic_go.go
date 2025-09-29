@@ -13,18 +13,20 @@ func NewQUIC(parent context.Context, conn *quic.Conn) Muxer {
 	}
 
 	return &quicGo{
-		conn:   conn,
-		laddr:  conn.LocalAddr(),
-		raddr:  conn.RemoteAddr(),
-		parent: parent,
+		conn:    conn,
+		laddr:   conn.LocalAddr(),
+		raddr:   conn.RemoteAddr(),
+		traffic: new(trafficCounter),
+		parent:  parent,
 	}
 }
 
 type quicGo struct {
-	conn   *quic.Conn
-	laddr  net.Addr
-	raddr  net.Addr
-	parent context.Context
+	conn    *quic.Conn
+	laddr   net.Addr
+	raddr   net.Addr
+	traffic *trafficCounter
+	parent  context.Context
 }
 
 func (q *quicGo) Accept() (net.Conn, error) {
@@ -63,10 +65,15 @@ func (q *quicGo) Protocol() (string, string) {
 	return "udp", "github.com/quic-go/quic-go"
 }
 
+func (q *quicGo) Transferred() (uint64, uint64) {
+	return q.traffic.load()
+}
+
 func (q *quicGo) makeConn(stm *quic.Stream) *quicGoConn {
 	return &quicGoConn{
-		stm:   stm,
-		laddr: q.laddr,
-		raddr: q.raddr,
+		stm:     stm,
+		laddr:   q.laddr,
+		raddr:   q.raddr,
+		traffic: q.traffic,
 	}
 }

@@ -30,6 +30,7 @@ func NewStdQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn
 		raddr:    toUDPAddr(conn.RemoteAddr()),
 		endpoint: endpoint,
 		parent:   parent,
+		traffic:  new(trafficCounter),
 	}
 }
 
@@ -39,6 +40,7 @@ type quicStd struct {
 	raddr    net.Addr
 	endpoint *quic.Endpoint
 	parent   context.Context
+	traffic  *trafficCounter
 }
 
 func (q *quicStd) Accept() (net.Conn, error) {
@@ -81,11 +83,16 @@ func (q *quicStd) Protocol() (string, string) {
 	return "udp", "golang.org/x/net/quic"
 }
 
+func (q *quicStd) Transferred() (uint64, uint64) {
+	return q.traffic.load()
+}
+
 func (q *quicStd) makeConn(stm *quic.Stream) *quicStdConn {
 	return &quicStdConn{
-		stm:    stm,
-		laddr:  q.laddr,
-		raddr:  q.raddr,
-		parent: q.parent,
+		stm:     stm,
+		laddr:   q.laddr,
+		raddr:   q.raddr,
+		traffic: q.traffic,
+		parent:  q.parent,
 	}
 }

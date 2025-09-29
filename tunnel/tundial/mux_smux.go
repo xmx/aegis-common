@@ -26,9 +26,10 @@ func NewSMUX(c net.Conn, cfg *smux.Config, isServer bool) (Muxer, error) {
 }
 
 type xtaciSMUX struct {
-	sess  *smux.Session
-	laddr net.Addr
-	raddr net.Addr
+	sess    *smux.Session
+	laddr   net.Addr
+	raddr   net.Addr
+	traffic *trafficCounter
 }
 
 func (x *xtaciSMUX) Accept() (net.Conn, error) {
@@ -36,31 +37,27 @@ func (x *xtaciSMUX) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	conn := x.makeConn(stm)
 
-	return stm, nil
+	return conn, nil
 }
 
-func (x *xtaciSMUX) Close() error {
-	return x.sess.Close()
-}
-
-func (x *xtaciSMUX) Addr() net.Addr {
-	return x.laddr
-}
-
-func (x *xtaciSMUX) Open(ctx context.Context) (net.Conn, error) {
+func (x *xtaciSMUX) Open(_ context.Context) (net.Conn, error) {
 	stm, err := x.sess.OpenStream()
 	if err != nil {
 		return nil, err
 	}
+	conn := x.makeConn(stm)
 
-	return stm, nil
+	return conn, nil
 }
 
-func (x *xtaciSMUX) RemoteAddr() net.Addr {
-	return x.raddr
-}
+func (x *xtaciSMUX) Close() error                 { return x.sess.Close() }
+func (x *xtaciSMUX) Addr() net.Addr               { return x.laddr }
+func (x *xtaciSMUX) RemoteAddr() net.Addr         { return x.raddr }
+func (x *xtaciSMUX) Protocol() (string, string)   { return "tcp", "github.com/xtaci/smux" }
+func (x *xtaciSMUX) Transferred() (rx, tx uint64) { return x.traffic.load() }
 
-func (x *xtaciSMUX) Protocol() (string, string) {
-	return "tcp", "github.com/xtaci/smux"
+func (x *xtaciSMUX) makeConn(stm *smux.Stream) *smuxConn {
+	return &smuxConn{stream: stm, traffic: x.traffic}
 }

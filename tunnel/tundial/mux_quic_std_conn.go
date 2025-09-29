@@ -9,18 +9,23 @@ import (
 )
 
 type quicStdConn struct {
-	stm    *quic.Stream
-	laddr  net.Addr
-	raddr  net.Addr
-	parent context.Context
+	stm     *quic.Stream
+	laddr   net.Addr
+	raddr   net.Addr
+	traffic *trafficCounter
+	parent  context.Context
 }
 
 func (q *quicStdConn) Read(b []byte) (int, error) {
-	return q.stm.Read(b)
+	n, err := q.stm.Read(b)
+	q.traffic.incrRX(n)
+	return n, err
 }
 
 func (q *quicStdConn) Write(b []byte) (int, error) {
-	return q.stm.Write(b)
+	n, err := q.stm.Write(b)
+	q.traffic.incrTX(n)
+	return n, err
 }
 
 func (q *quicStdConn) Close() error {
