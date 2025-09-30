@@ -3,6 +3,7 @@ package tundial
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/url"
 	"time"
@@ -48,17 +49,20 @@ type Config struct {
 	Parent context.Context `json:"-"`
 }
 
-func Open(openCfg Config) (mux Muxer, err error) {
+func Open(openCfg Config) (Muxer, error) {
 	c := openCfg.preformat()
+	var errs []error
 	for _, proto := range c.Protocols {
 		for _, addr := range c.Addresses {
-			if mux, err = c.open(proto, addr); err == nil {
-				return
+			mux, err := c.open(proto, addr)
+			if err == nil {
+				return mux, nil
 			}
+			errs = append(errs, err)
 		}
 	}
 
-	return
+	return nil, errors.Join(errs...)
 }
 
 func (c Config) open(proto, addr string) (Muxer, error) {

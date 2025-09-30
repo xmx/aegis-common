@@ -54,6 +54,7 @@ func (a *atomicMuxer) Addr() net.Addr                             { return a.get
 func (a *atomicMuxer) Open(ctx context.Context) (net.Conn, error) { return a.get().Open(ctx) }
 func (a *atomicMuxer) RemoteAddr() net.Addr                       { return a.get().RemoteAddr() }
 func (a *atomicMuxer) Protocol() (string, string)                 { return a.get().Protocol() }
+func (a *atomicMuxer) Transferred() (rx, tx uint64)               { return a.get().Transferred() }
 
 func (a *atomicMuxer) Store(mux Muxer) Muxer {
 	m := &atomicMuxHolder{m: mux}
