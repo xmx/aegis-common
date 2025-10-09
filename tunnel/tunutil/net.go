@@ -62,3 +62,23 @@ func (md *matchedDialer) DialContext(ctx context.Context, network, address strin
 
 	return md.fallback.DialContext(ctx, network, address)
 }
+
+func NewHostMatch(host string, dial Dialer) MatchedDialer {
+	return &hostMatch{
+		host: host,
+		dial: dial,
+	}
+}
+
+type hostMatch struct {
+	host string
+	dial Dialer
+}
+
+func (h *hostMatch) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return h.dial.DialContext(ctx, network, address)
+}
+
+func (h *hostMatch) DialMatched(_, host, _ string) bool {
+	return h.host == host
+}
