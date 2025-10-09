@@ -82,3 +82,17 @@ func (h *hostMatch) DialContext(ctx context.Context, network, address string) (n
 func (h *hostMatch) DialMatched(_, host, _ string) bool {
 	return h.host == host
 }
+
+func NewTunnelDialer(mux tundial.Muxer) Dialer {
+	return &tunnelDialer{
+		mux: mux,
+	}
+}
+
+type tunnelDialer struct {
+	mux tundial.Muxer
+}
+
+func (t *tunnelDialer) DialContext(ctx context.Context, _, _ string) (net.Conn, error) {
+	return t.mux.Open(ctx)
+}

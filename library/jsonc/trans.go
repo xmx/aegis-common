@@ -42,14 +42,14 @@ func Translate(s []byte) []byte {
 	comment := &commentData{}
 	for _, ch := range s {
 		if ch == charESCAPE || escaped {
-			if !comment.startted {
+			if !comment.started {
 				j[i] = ch
 				i++
 			}
 			escaped = !escaped
 			continue
 		}
-		if ch == charQUOTE && !comment.startted {
+		if ch == charQUOTE && !comment.started {
 			quote = !quote
 		}
 		if (ch == charSPACE || ch == charTAB) && !quote {
@@ -61,12 +61,12 @@ func Translate(s []byte) []byte {
 			}
 			continue
 		}
-		if quote && !comment.startted {
+		if quote && !comment.started {
 			j[i] = ch
 			i++
 			continue
 		}
-		if comment.startted {
+		if comment.started {
 			if ch == charASTERISK && !comment.isSingleLined {
 				comment.canEnd = true
 				continue
@@ -99,17 +99,16 @@ func Translate(s []byte) []byte {
 type commentData struct {
 	canStart      bool
 	canEnd        bool
-	startted      bool
+	started       bool
 	isSingleLined bool
-	endLine       int
 }
 
 func (c *commentData) stop() {
-	c.startted = false
+	c.started = false
 	c.canStart = false
 }
 
 func (c *commentData) start(ch byte) {
-	c.startted = true
+	c.started = true
 	c.isSingleLined = ch == charSLASH || ch == charHASH
 }
