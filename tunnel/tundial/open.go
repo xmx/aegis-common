@@ -104,7 +104,13 @@ func (c Config) openQUIC(addr string) (Muxer, error) {
 	defer cancel()
 
 	tlsCfg := c.tlsConfig(true)
-	conn, err := quicgo.DialAddr(ctx, addr, tlsCfg, c.QUICGoConfig)
+	quicCfg := c.QUICGoConfig
+	if quicCfg == nil {
+		quicCfg = &quicgo.Config{
+			KeepAlivePeriod: 10 * time.Second,
+		}
+	}
+	conn, err := quicgo.DialAddr(ctx, addr, tlsCfg, quicCfg)
 	if err != nil {
 		return nil, err
 	}
