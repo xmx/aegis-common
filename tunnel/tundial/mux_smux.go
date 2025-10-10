@@ -9,8 +9,9 @@ import (
 
 func NewSMUX(c net.Conn, cfg *smux.Config, isServer bool) (Muxer, error) {
 	mux := &xtaciSMUX{
-		laddr: c.LocalAddr(),
-		raddr: c.RemoteAddr(),
+		laddr:   c.LocalAddr(),
+		raddr:   c.RemoteAddr(),
+		traffic: new(trafficCounter),
 	}
 	var err error
 	if isServer {

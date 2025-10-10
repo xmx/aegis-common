@@ -152,12 +152,6 @@ func (c Config) preformat() Config {
 	if c.WebSocketPath == "" {
 		c.WebSocketPath = "/api/tunnel"
 	}
-	if c.WebSocketDialer == nil {
-		c.WebSocketDialer = &websocket.Dialer{
-			HandshakeTimeout:  c.PerTimeout,
-			EnableCompression: true,
-		}
-	}
 	{
 		uniq := make(map[string]struct{}, 4)
 		used := make([]string, 0, 2)
