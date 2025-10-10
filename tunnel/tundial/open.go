@@ -84,7 +84,7 @@ func (c Config) openHTTP(addr string) (Muxer, error) {
 	ctx, cancel := c.context()
 	defer cancel()
 
-	d := c.WebSocketDialer
+	d := c.webSocketDialer()
 	ws, _, err := d.DialContext(ctx, strURL, nil)
 	if err != nil {
 		return nil, err
@@ -233,5 +233,16 @@ func (c Config) quicGoConfig() *quicgo.Config {
 
 	return &quicgo.Config{
 		KeepAlivePeriod: 10 * time.Second,
+	}
+}
+
+func (c Config) webSocketDialer() *websocket.Dialer {
+	if d := c.WebSocketDialer; d != nil {
+		return d
+	}
+
+	return &websocket.Dialer{
+		TLSClientConfig:  c.tlsConfig(false),
+		HandshakeTimeout: c.PerTimeout,
 	}
 }
