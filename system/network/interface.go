@@ -77,10 +77,10 @@ type Card struct {
 }
 
 func (c Card) equal(v *Card) bool {
-	if !(c.Name == v.Name &&
-		c.Index == v.Index &&
-		c.MTU == v.MTU &&
-		c.MAC == v.MAC) {
+	if c.Name != v.Name ||
+		c.Index != v.Index ||
+		c.MTU != v.MTU ||
+		c.MAC != v.MAC {
 		return false
 	}
 
