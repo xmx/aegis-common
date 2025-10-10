@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/netip"
 	"time"
@@ -17,7 +18,11 @@ type quicConn struct {
 }
 
 func (q *quicConn) Read(b []byte) (int, error) {
-	return q.stm.Read(b)
+	n, err := q.stm.Read(b)
+	if err != nil {
+		fmt.Println("quic read error", err)
+	}
+	return n, err
 }
 
 func (q *quicConn) Write(b []byte) (int, error) {

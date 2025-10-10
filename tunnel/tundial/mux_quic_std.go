@@ -2,6 +2,7 @@ package tundial
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/netip"
 	"time"
@@ -38,7 +39,7 @@ type quicStd struct {
 	conn     *quic.Conn
 	laddr    net.Addr
 	raddr    net.Addr
-	endpoint *quic.Endpoint
+	endpoint *quic.Endpoint // server 端可以为空。
 	parent   context.Context
 	traffic  *trafficCounter
 }
@@ -54,11 +55,17 @@ func (q *quicStd) Accept() (net.Conn, error) {
 }
 
 func (q *quicStd) Close() error {
-	_ = q.conn.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	err := q.conn.Close()
+	end := q.endpoint
+	if end == nil {
+		return err
+	}
 
-	return q.endpoint.Close(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	err1 := end.Close(ctx)
+	cancel()
+
+	return errors.Join(err, err1)
 }
 
 func (q *quicStd) Addr() net.Addr {

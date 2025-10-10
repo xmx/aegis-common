@@ -29,7 +29,7 @@ func (d defaultDialer) DialContext(ctx context.Context, network, address string)
 }
 
 type Handler interface {
-	Handle(tundial.Muxer) error
+	Handle(tundial.Muxer)
 }
 
 func NewMatchDialer(fallback Dialer, matches ...MatchedDialer) Dialer {
