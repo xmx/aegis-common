@@ -68,9 +68,11 @@ func Open(openCfg Config) (Muxer, error) {
 func (c Config) open(proto, addr string) (Muxer, error) {
 	if proto == "tcp" {
 		return c.openHTTP(addr)
-	} else {
-		return c.openQUIC(addr)
+	} else if proto == "udp-quic-std" {
+		return c.openStdQUIC(addr)
 	}
+
+	return c.openQUIC(addr)
 }
 
 func (c Config) openHTTP(addr string) (Muxer, error) {
@@ -153,9 +155,21 @@ func (c Config) preformat() Config {
 		c.WebSocketPath = "/api/tunnel"
 	}
 	{
+		allows := map[string]bool{
+			"tcp":          true,
+			"udp":          true,
+			"udp-quic-go":  true, // 开发阶段调试使用
+			"udp-quic-std": true, // 开发阶段调试使用
+		}
 		uniq := make(map[string]struct{}, 4)
 		used := make([]string, 0, 2)
 		for _, proto := range c.Protocols {
+			if !allows[proto] {
+				continue
+			}
+			if proto == "udp-quic-go" { // udp 即使用 udp-quic-go 方式连接
+				proto = "udp"
+			}
 			if _, ok := uniq[proto]; !ok {
 				uniq[proto] = struct{}{}
 				used = append(used, proto)
