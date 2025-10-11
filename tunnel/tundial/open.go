@@ -121,7 +121,7 @@ func (c Config) openQUIC(addr string) (Muxer, error) {
 
 // openStdQUIC 标准库的 quic 存在 bug，经常性的 context canceled。
 func (c Config) openStdQUIC(addr string) (Muxer, error) {
-	endpoint, err := quic.Listen("udp", addr, nil)
+	endpoint, err := quic.Listen("udp", "", nil)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,7 @@ func (q *quicStdConn) Read(b []byte) (int, error) {
 func (q *quicStdConn) Write(b []byte) (int, error) {
 	n, err := q.stm.Write(b)
 	q.traffic.incrTX(n)
+	_ = q.stm.Flush()
 	return n, err
 }
 
