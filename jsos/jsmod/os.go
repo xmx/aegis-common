@@ -12,7 +12,7 @@ func NewOS() jsvm.Module {
 
 type stdOS struct{}
 
-func (mod *stdOS) Preload(eng jsvm.Engineer) (string, any, bool) {
+func (mod *stdOS) Preload(jsvm.Engineer) (string, any, bool) {
 	vals := map[string]any{
 		"getpid":       os.Getpid,
 		"open":         os.Open,

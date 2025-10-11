@@ -1,6 +1,5 @@
 import console from 'console'
 import crontab from 'crontab'
-import time from 'time'
 import runtime from 'runtime'
 import os from 'os'
 
