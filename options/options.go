@@ -9,7 +9,12 @@ type Lister[T any] interface {
 func Eval[T any](ls ...Lister[T]) T {
 	var v T
 	for _, opt := range ls {
-		if opt == nil || reflect.ValueOf(opt).IsNil() {
+		if opt == nil {
+			continue
+		}
+
+		rv := reflect.ValueOf(opt)
+		if rv.Type().Kind() == reflect.Ptr && rv.IsNil() {
 			continue
 		}
 
