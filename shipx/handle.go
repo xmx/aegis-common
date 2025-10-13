@@ -11,7 +11,7 @@ import (
 
 	"github.com/xgfone/ship/v5"
 	"github.com/xmx/aegis-common/contract/problem"
-	"github.com/xmx/aegis-common/validation"
+	"github.com/xmx/aegis-common/library/validation"
 )
 
 func NotFound(_ *ship.Context) error {
@@ -84,5 +84,5 @@ func UnpackError(err error) (statusCode int, title string, detail string) {
 		statusCode = http.StatusRequestEntityTooLarge
 	}
 
-	return
+	return statusCode, title, detail
 }

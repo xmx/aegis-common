@@ -1,8 +1,6 @@
 package jsmod
 
 import (
-	"sync/atomic"
-
 	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
@@ -14,7 +12,7 @@ func NewVariable[T any](modname string) *Variable[T] {
 
 type Variable[T any] struct {
 	name string
-	data atomic.Pointer[T]
+	data T
 }
 
 func (mod *Variable[T]) Preload(jsvm.Engineer) (string, any, bool) {
@@ -31,10 +29,5 @@ func (mod *Variable[T]) Preload(jsvm.Engineer) (string, any, bool) {
 	return name, vals, true
 }
 
-func (mod *Variable[T]) Get() *T {
-	return mod.data.Load()
-}
-
-func (mod *Variable[T]) Set(v *T) {
-	mod.data.Store(v)
-}
+func (mod *Variable[T]) Get() T  { return mod.data }
+func (mod *Variable[T]) Set(v T) { mod.data = v }
