@@ -15,20 +15,9 @@ func NewStdQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn
 	if parent == nil {
 		parent = context.Background()
 	}
-	toUDPAddr := func(ap netip.AddrPort) *net.UDPAddr {
-		addr, port := ap.Addr(), ap.Port()
-
-		return &net.UDPAddr{
-			IP:   addr.AsSlice(),
-			Port: int(port),
-			Zone: addr.Zone(),
-		}
-	}
 
 	return &quicStd{
 		conn:     conn,
-		laddr:    toUDPAddr(conn.LocalAddr()),
-		raddr:    toUDPAddr(conn.RemoteAddr()),
 		endpoint: endpoint,
 		parent:   parent,
 		traffic:  new(trafficCounter),
@@ -37,8 +26,6 @@ func NewStdQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn
 
 type quicStd struct {
 	conn     *quic.Conn
-	laddr    net.Addr
-	raddr    net.Addr
 	endpoint *quic.Endpoint // server 端可以为空。
 	parent   context.Context
 	traffic  *trafficCounter
@@ -69,7 +56,8 @@ func (q *quicStd) Close() error {
 }
 
 func (q *quicStd) Addr() net.Addr {
-	return q.laddr
+	addr := q.conn.LocalAddr()
+	return q.toAddr(addr)
 }
 
 func (q *quicStd) Open(ctx context.Context) (net.Conn, error) {
@@ -83,7 +71,8 @@ func (q *quicStd) Open(ctx context.Context) (net.Conn, error) {
 }
 
 func (q *quicStd) RemoteAddr() net.Addr {
-	return q.raddr
+	addr := q.conn.RemoteAddr()
+	return q.toAddr(addr)
 }
 
 func (q *quicStd) Protocol() (string, string) {
@@ -97,9 +86,18 @@ func (q *quicStd) Transferred() (uint64, uint64) {
 func (q *quicStd) makeConn(stm *quic.Stream) *quicStdConn {
 	return &quicStdConn{
 		stm:     stm,
-		laddr:   q.laddr,
-		raddr:   q.raddr,
+		laddr:   q.Addr(),
+		raddr:   q.RemoteAddr(),
 		traffic: q.traffic,
 		parent:  q.parent,
+	}
+}
+
+func (*quicStd) toAddr(ip netip.AddrPort) *net.UDPAddr {
+	addr, port := ip.Addr(), ip.Port()
+	return &net.UDPAddr{
+		IP:   addr.AsSlice(),
+		Port: int(port),
+		Zone: addr.Zone(),
 	}
 }
