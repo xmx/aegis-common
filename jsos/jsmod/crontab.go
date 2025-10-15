@@ -24,13 +24,13 @@ type crontabModule struct {
 func (mod *crontabModule) Preload(eng jsvm.Engineer) (string, any, bool) {
 	mod.eng = eng
 	vals := map[string]any{
-		"addJob": mod.addJob,
+		"add": mod.add,
 	}
 
 	return "crontab", vals, false
 }
 
-func (mod *crontabModule) addJob(spec string, cmd func()) (*sobek.Object, error) {
+func (mod *crontabModule) add(spec string, cmd func()) (*sobek.Object, error) {
 	buf := make([]byte, 24)
 	nano := time.Now().UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(nano))
