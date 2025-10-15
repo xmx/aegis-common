@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/xmx/aegis-common/jsos/jsvm"
+	"github.com/xmx/aegis-common/options"
 )
 
 type Manager interface {
@@ -17,15 +18,17 @@ type Manager interface {
 	All() []Processor
 }
 
-func NewTaskManager(mods []jsvm.Module) Manager {
+func NewTaskManager(opts ...options.Lister[option]) Manager {
+	opt := options.Eval(opts...)
+
 	return &taskManager{
-		mods:  mods,
+		opt:   opt,
 		procs: make(map[uint64]*process, 64),
 	}
 }
 
 type taskManager struct {
-	mods  []jsvm.Module
+	opt   option
 	pid   atomic.Uint64
 	mutex sync.RWMutex
 	procs map[uint64]*process
@@ -73,7 +76,11 @@ func (tm *taskManager) All() []Processor {
 func (tm *taskManager) createProcess(ctx context.Context, name string) *process {
 	pid := tm.pid.Add(1)
 	eng := jsvm.New(ctx)
-	eng.Require().Registers(tm.mods)
+	eng.Require().Registers(tm.opt.modules)
+	stdout, stderr := eng.Output()
+	stdout.Attach(tm.opt.stdout)
+	stderr.Attach(tm.opt.stderr)
+
 	proc := &process{
 		pid:  pid,
 		eng:  eng,
