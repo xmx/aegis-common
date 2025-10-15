@@ -1,6 +1,6 @@
 module github.com/xmx/aegis-common
 
-go 1.25.1
+go 1.25.3
 
 require (
 	github.com/creack/pty v1.1.24
