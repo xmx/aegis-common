@@ -1,4 +1,4 @@
-package wsocket
+package httpkit
 
 import (
 	"io"
@@ -6,29 +6,29 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type CopyStat struct {
+type ExchangeStat struct {
 	AtoBCount int64 `json:"atob_count"`
 	BtoACount int64 `json:"btoa_count"`
 	AtoBError error `json:"atob_error"`
 	BtoAError error `json:"btoa_error"`
 }
 
-func ProxyCopy(a, b *websocket.Conn) CopyStat {
-	var stat CopyStat
+func ExchangeWebsocket(a, b *websocket.Conn) ExchangeStat {
+	var stat ExchangeStat
 	wait := make(chan struct{})
 	go func() {
 		defer close(wait)
-		stat.BtoACount, stat.BtoAError = copyTo(a, b)
+		stat.BtoACount, stat.BtoAError = copyWebsocket(a, b)
 	}()
 
-	stat.AtoBCount, stat.AtoBError = copyTo(b, a)
+	stat.AtoBCount, stat.AtoBError = copyWebsocket(b, a)
 
 	<-wait
 
 	return stat
 }
 
-func copyTo(dst, src *websocket.Conn) (int64, error) {
+func copyWebsocket(dst, src *websocket.Conn) (int64, error) {
 	var num int64
 	for {
 		mt, r, err := src.NextReader()

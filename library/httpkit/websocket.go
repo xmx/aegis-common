@@ -1,4 +1,4 @@
-package wsocket
+package httpkit
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func DefaultUpgrader() *websocket.Upgrader {
+func NewWebsocketUpgrader() *websocket.Upgrader {
 	return &websocket.Upgrader{
 		HandshakeTimeout:  10 * time.Second,
 		CheckOrigin:       func(*http.Request) bool { return true },
@@ -17,7 +17,7 @@ func DefaultUpgrader() *websocket.Upgrader {
 	}
 }
 
-func NewDialer(dc func(ctx context.Context, network, addr string) (net.Conn, error)) *websocket.Dialer {
+func NewWebsocketDialer(dc func(ctx context.Context, network, addr string) (net.Conn, error)) *websocket.Dialer {
 	return &websocket.Dialer{
 		NetDialContext:    dc,
 		HandshakeTimeout:  10 * time.Second,
