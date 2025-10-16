@@ -15,6 +15,7 @@ const (
 
 type Tasker interface {
 	PID() uint64
+	Status() uint32
 	Name() string
 	Kill(cause any)
 	Error() error
