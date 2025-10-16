@@ -1,4 +1,4 @@
-package jstask
+package jsexec
 
 import (
 	"io"
