@@ -27,52 +27,54 @@ type Muxer interface {
 type AtomicMuxer interface {
 	Muxer
 
-	// Store 覆盖更新底层 Muxer。
+	// Swap 覆盖更新底层 Muxer。
 	//
 	// 客户端 Open 成功后，返回的 Muxer 交给业务层代码持有，但是任何连接都存在掉线重连的问题，
 	// 重连成功后，要让业务层代码无感的替换底层的连接通道。
-	Store(mux Muxer) (old Muxer)
+	Swap(mux Muxer) (old Muxer)
 }
 
 func MakeAtomic(m Muxer) AtomicMuxer {
 	if am, yes := m.(AtomicMuxer); yes {
 		return am
 	}
-	am := new(atomicMuxer)
-	_ = am.Store(m)
+	am := new(safeMuxer)
+	_ = am.Swap(m)
 
 	return am
 }
 
-type atomicMuxer struct {
-	val atomic.Pointer[atomicMuxHolder]
+type safeMuxer struct {
+	ptr atomic.Pointer[Muxer]
 }
 
-func (a *atomicMuxer) Accept() (net.Conn, error)                  { return a.get().Accept() }
-func (a *atomicMuxer) Close() error                               { return a.get().Close() }
-func (a *atomicMuxer) Addr() net.Addr                             { return a.get().Addr() }
-func (a *atomicMuxer) Open(ctx context.Context) (net.Conn, error) { return a.get().Open(ctx) }
-func (a *atomicMuxer) RemoteAddr() net.Addr                       { return a.get().RemoteAddr() }
-func (a *atomicMuxer) Protocol() (string, string)                 { return a.get().Protocol() }
-func (a *atomicMuxer) Transferred() (rx, tx uint64)               { return a.get().Transferred() }
+func (sm *safeMuxer) Accept() (net.Conn, error)                  { return sm.load().Accept() }
+func (sm *safeMuxer) Close() error                               { return sm.load().Close() }
+func (sm *safeMuxer) Addr() net.Addr                             { return sm.load().Addr() }
+func (sm *safeMuxer) Open(ctx context.Context) (net.Conn, error) { return sm.load().Open(ctx) }
+func (sm *safeMuxer) RemoteAddr() net.Addr                       { return sm.load().RemoteAddr() }
+func (sm *safeMuxer) Protocol() (string, string)                 { return sm.load().Protocol() }
+func (sm *safeMuxer) Transferred() (rx, tx uint64)               { return sm.load().Transferred() }
 
-func (a *atomicMuxer) Store(mux Muxer) Muxer {
-	m := &atomicMuxHolder{m: mux}
-	if old := a.val.Swap(m); old != nil {
-		return old.get()
+func (sm *safeMuxer) Swap(mux Muxer) Muxer {
+	if mux == nil {
+		panic("nil muxer is not allowed")
+	}
+
+	if old := sm.ptr.Swap(&mux); old != nil {
+		return *old
 	}
 
 	return nil
 }
 
-func (a *atomicMuxer) get() Muxer {
-	m := a.val.Load()
-	return m.get()
+func (sm *safeMuxer) load() Muxer {
+	if m := sm.ptr.Load(); m != nil {
+		return *m
+	}
+
+	panic("muxer uninitialized")
 }
-
-type atomicMuxHolder struct{ m Muxer }
-
-func (m atomicMuxHolder) get() Muxer { return m.m }
 
 type trafficCounter struct {
 	rx, tx atomic.Uint64

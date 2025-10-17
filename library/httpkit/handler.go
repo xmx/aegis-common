@@ -10,36 +10,26 @@ type Handler interface {
 	Store(http.Handler)
 }
 
-func NewAtomicHandler(h http.Handler) Handler {
-	ah := new(atomicHolder)
-	ah.Store(h)
-
-	return ah
+func NewHandler() Handler {
+	return &atomicHandler{}
 }
 
-type atomicHolder struct {
-	v atomic.Pointer[handlerHolder]
+type atomicHandler struct {
+	ptr atomic.Pointer[http.Handler]
 }
 
-func (ah *atomicHolder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h := ah.v.Load(); h != nil {
-		h.ServeHTTP(w, r)
+func (ah *atomicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h := ah.ptr.Load(); h != nil {
+		(*h).ServeHTTP(w, r)
 	} else {
 		http.NotFound(w, r)
 	}
 }
 
-func (ah *atomicHolder) Store(h http.Handler) {
-	if h != nil {
-		hh := &handlerHolder{h: h}
-		ah.v.Store(hh)
+func (ah *atomicHandler) Store(h http.Handler) {
+	if h == nil {
+		ah.ptr.Store(nil)
+	} else {
+		ah.ptr.Store(&h)
 	}
-}
-
-type handlerHolder struct {
-	h http.Handler
-}
-
-func (hh *handlerHolder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hh.h.ServeHTTP(w, r)
 }
