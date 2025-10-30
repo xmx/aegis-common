@@ -8,10 +8,13 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-func NewTint(w io.Writer) slog.Handler {
-	return tint.NewHandler(w, &tint.Options{
-		AddSource:  true,
-		Level:      slog.LevelDebug,
-		TimeFormat: time.RFC3339,
-	})
+func NewTint(w io.Writer, opt *slog.HandlerOptions) slog.Handler {
+	tp := &tint.Options{TimeFormat: time.RFC3339}
+	if opt != nil {
+		tp.Level = opt.Level
+		tp.AddSource = opt.AddSource
+		tp.ReplaceAttr = opt.ReplaceAttr
+	}
+
+	return tint.NewHandler(w, tp)
 }
