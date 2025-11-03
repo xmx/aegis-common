@@ -4,12 +4,12 @@ go 1.25.3
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/evanw/esbuild v0.25.11
+	github.com/evanw/esbuild v0.25.12
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/grafana/sobek v0.0.0-20251030085132-c6d5c07b409a
+	github.com/grafana/sobek v0.0.0-20251030131753-d05c9166857d
 	github.com/lmittmann/tint v1.1.2
 	github.com/quic-go/quic-go v0.55.0
 	github.com/robfig/cron/v3 v3.0.1
