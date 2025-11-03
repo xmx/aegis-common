@@ -18,11 +18,10 @@ func WriteFile(name string, v any) error {
 		}
 	}
 
-	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	out, err := json.Marshal(v, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	return json.MarshalWrite(file, v, jsontext.WithIndent("  "))
+	return os.WriteFile(name, out, 0o600)
 }

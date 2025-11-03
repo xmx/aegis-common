@@ -80,7 +80,7 @@ func (th *taskHandler) Run() {
 
 	panicked, err := th.safeCall(ctx)
 	if err == nil {
-		th.log.Info("定时任务运行完毕", attrs...)
+		th.log.Debug("定时任务运行完毕", attrs...)
 		return
 	}
 	attrs = append(attrs, slog.Any("error", err))
@@ -105,5 +105,5 @@ func (th *taskHandler) safeCall(ctx context.Context) (panicked bool, err error) 
 
 	err = th.call(ctx)
 
-	return
+	return panicked, err
 }
