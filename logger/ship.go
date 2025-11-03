@@ -7,7 +7,11 @@ import (
 	"github.com/xgfone/ship/v5"
 )
 
-func NewShip(h slog.Handler, skip int) ship.Logger {
+func NewShip(h slog.Handler, skips ...int) ship.Logger {
+	skip := 6
+	if len(skips) > 0 {
+		skip = skips[0]
+	}
 	sh := Skip(h, skip)
 	log := slog.New(sh)
 
