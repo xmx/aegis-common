@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func ReadHead(r io.Reader, v any) error {
+func ReadAuth(r io.Reader, v any) error {
 	size := make([]byte, 2)
 	if n, err := r.Read(size); err != nil {
 		return err
@@ -30,7 +30,7 @@ func ReadHead(r io.Reader, v any) error {
 	return json.Unmarshal(data, v)
 }
 
-func WriteHead(w io.Writer, v any) error {
+func WriteAuth(w io.Writer, v any) error {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return err
