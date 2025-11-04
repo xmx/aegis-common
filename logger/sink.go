@@ -5,8 +5,13 @@ import (
 	"log/slog"
 )
 
-func NewSink(h slog.Handler, skip int) Sink {
+func NewSink(h slog.Handler, skips ...int) Sink {
+	skip := 13
+	if len(skips) > 0 {
+		skip = skips[0]
+	}
 	han := Skip(h, skip)
+
 	return Sink{
 		log: slog.New(han),
 	}
