@@ -18,7 +18,11 @@ func WriteFile(name string, v any) error {
 		}
 	}
 
-	out, err := json.Marshal(v, jsontext.WithIndent("  "))
+	opts := []json.Options{
+		jsontext.EscapeForHTML(false),
+		jsontext.WithIndent("  "),
+	}
+	out, err := json.Marshal(v, opts...)
 	if err != nil {
 		return err
 	}
