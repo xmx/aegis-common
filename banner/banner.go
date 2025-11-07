@@ -1,6 +1,7 @@
 package banner
 
 import (
+	"debug/buildinfo"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"path"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 )
@@ -64,24 +66,26 @@ func parse() {
 	workdir, _ = os.Getwd()
 	compileAt = parseTime(compileTime)
 
-	info, _ := debug.ReadBuildInfo()
-	if info == nil {
+	bi, _ := debug.ReadBuildInfo()
+	if bi == nil {
 		return
 	}
-	buildPath = path.Dir(info.Path)
-	settings := info.Settings
+	buildPath = path.Dir(bi.Path)
+	settings := bi.Settings
 	for _, set := range settings {
 		key, val := set.Key, set.Value
 		switch key {
 		case "vcs.revision":
 			revision = val
-		case "vcs.time":
-			commitAt = parseTime(val)
-			if version == "" {
-				version = commitAt.UTC().Format("v06.1.2-150405")
-			}
 		}
 	}
+
+	inf := ParseInfo(bi)
+	if version == "" && inf.Version != "" {
+		version = "v" + inf.Version
+	}
+	goos = inf.Goos
+	arch = inf.Goarch
 }
 
 func parseTime(str string) time.Time {
@@ -101,4 +105,44 @@ func parseTime(str string) time.Time {
 	}
 
 	return time.Time{}
+}
+
+func parseVersion(t time.Time) string {
+	return t.UTC().Format("06.1.2-150405")
+}
+
+type Info struct {
+	Goos    string `json:"goos"`
+	Goarch  string `json:"goarch"`
+	Version string `json:"version"`
+}
+
+func ParseInfo(bi *buildinfo.BuildInfo) *Info {
+	inf := new(Info)
+	for _, set := range bi.Settings {
+		key, val := set.Key, set.Value
+		switch key {
+		case "GOOS":
+			inf.Goos = val
+		case "GOARCH":
+			inf.Goarch = val
+		case "vcs.time":
+			if at, _ := time.ParseInLocation(time.RFC3339, val, time.UTC); !at.IsZero() {
+				inf.Version = parseVersion(at)
+			}
+		}
+	}
+	if inf.Version != "" {
+		return inf
+	}
+
+	mv := bi.Main.Version
+	after, _ := strings.CutPrefix(mv, "v0.0.0-")
+	before, _, _ := strings.Cut(after, "-")
+	at, _ := time.ParseInLocation("20060102150405", before, time.UTC)
+	if !at.IsZero() {
+		inf.Version = parseVersion(at)
+	}
+
+	return inf
 }
