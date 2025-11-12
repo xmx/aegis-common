@@ -62,3 +62,14 @@ func ReadManifest(f string, v any) error {
 
 	return json.UnmarshalRead(mf, v)
 }
+
+type File[T any] string
+
+func (f File[T]) Read() (*T, error) {
+	t := new(T)
+	if err := ReadManifest(string(f), t); err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}

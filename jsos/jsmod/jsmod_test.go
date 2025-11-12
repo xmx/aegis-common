@@ -2,14 +2,12 @@ package jsmod_test
 
 import (
 	"context"
-	"log/slog"
+	"net/http"
 	"os"
 	"testing"
 
-	"github.com/robfig/cron/v3"
 	"github.com/xmx/aegis-common/jsos/jsmod"
 	"github.com/xmx/aegis-common/jsos/jsvm"
-	"github.com/xmx/aegis-common/library/cronv3"
 )
 
 func TestVariable(t *testing.T) {
@@ -22,11 +20,6 @@ func TestVariable(t *testing.T) {
 	code := string(dat)
 
 	vm := newVM()
-	crond := cronv3.New(context.Background(), slog.Default(), cron.WithSeconds())
-	crond.Start()
-	crontab := jsmod.NewCrontab(crond)
-	vm.Require().Register(crontab)
-
 	val, err := vm.RunScript(filename, code)
 	if err != nil {
 		t.Log(err)
@@ -51,4 +44,8 @@ func TestPrint(t *testing.T) {
 	stdout.Attach(os.Stdout)
 
 	vm.RunScript("s", "import console from 'console'\nconsole.log('hello world')\nconsole.log('hello world')")
+}
+
+func sss(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 }

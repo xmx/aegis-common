@@ -1,11 +1,24 @@
-import console from 'console'
-import crontab from 'crontab'
-import runtime from 'runtime'
-import os from 'os'
+import time from 'time'
+import url from 'net/url'
+import http from 'net/http'
+import httputil from 'net/http/httputil'
 
-const handle = crontab.addJob('*/3 * * * * *', function () {
-    console.log(`${os.getpid()} - ${runtime.numGoroutine()}`)
+const target = url.parse('https://mirrors.zju.edu.cn/')
+const proxy = httputil.newSingleHostReverseProxy(target)
+
+const mux = http.newServeMux()
+mux.handleFunc('/', (w, r) => {
+    w.header().set('Content-Type', 'text/html')
+    w.write('<h1>HELLO</h1>')
 })
 
-console.log(handle.id())
+const opt = {
+    addr: '0.0.0.0:8888',
+    // handler: proxy,
+    handler: mux,
+    readTimeout: time.minute,
+    readHeaderTimeout: 5 * time.second,
+}
+
+const handle = http.serve(opt)
 handle.wait()

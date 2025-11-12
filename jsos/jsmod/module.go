@@ -6,6 +6,8 @@ func Modules() []jsvm.Module {
 	return []jsvm.Module{
 		NewConsole(),
 		NewContext(),
+		NewHTTP(),
+		NewHTTPUtil(),
 		NewNet(),
 		NewOS(),
 		NewRuntime(),
