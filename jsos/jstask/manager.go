@@ -1,4 +1,4 @@
-package jsexec
+package jstask
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/xmx/aegis-common/jsos/jsvm"
-	"github.com/xmx/aegis-common/options"
 )
 
 type Manager interface {
@@ -15,8 +14,7 @@ type Manager interface {
 	Tasks() []Tasker
 }
 
-func NewManager(opts ...options.Lister[option]) Manager {
-	opt := options.Eval(opts...)
+func NewManager(opt Option) Manager {
 	return &taskManager{
 		opt:   opt,
 		tasks: make(map[uint64]*jsTask, 64),
@@ -24,7 +22,7 @@ func NewManager(opts ...options.Lister[option]) Manager {
 }
 
 type taskManager struct {
-	opt   option
+	opt   Option
 	pid   atomic.Uint64
 	mutex sync.RWMutex
 	tasks map[uint64]*jsTask
@@ -37,10 +35,10 @@ func (m *taskManager) Exec(ctx context.Context, name, code string) {
 	pid := m.pid.Add(1)
 	eng := jsvm.New(ctx)
 	stdout, stderr := eng.Output()
-	stdout.Attach(m.opt.stdout)
-	stderr.Attach(m.opt.stderr)
+	stdout.Attach(m.opt.Stdout)
+	stderr.Attach(m.opt.Stderr)
 	require := eng.Require()
-	require.Registers(m.opt.modules)
+	require.Registers(m.opt.Modules)
 
 	task := &jsTask{
 		pid:  pid,

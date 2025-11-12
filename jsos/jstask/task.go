@@ -1,4 +1,4 @@
-package jsexec
+package jstask
 
 import (
 	"sync/atomic"
