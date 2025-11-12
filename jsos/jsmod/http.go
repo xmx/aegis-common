@@ -56,6 +56,7 @@ func (hm *httpModule) serve(opt httpServerOptions) (*sobek.Object, error) {
 		IdleTimeout:       opt.IdleTimeout,
 		MaxHeaderBytes:    opt.MaxHeaderBytes,
 	}
+	hs.srv = srv
 	final := hm.eng.Finalizer()
 	hs.finalID = final.Add(hs.close)
 	context.AfterFunc(ctx, hs.close)
