@@ -77,6 +77,8 @@ func parse() {
 		switch key {
 		case "vcs.revision":
 			revision = val
+		case "vcs.time":
+			commitAt = parseTime(val)
 		}
 	}
 
