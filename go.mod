@@ -9,7 +9,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/grafana/sobek v0.0.0-20251103154147-6b40183f38e5
+	github.com/grafana/sobek v0.0.0-20251112160923-0a6e37e05506
 	github.com/lmittmann/tint v1.1.2
 	github.com/quic-go/quic-go v0.56.0
 	github.com/robfig/cron/v3 v3.0.1
