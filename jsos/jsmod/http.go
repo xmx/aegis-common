@@ -61,13 +61,15 @@ func (hm *httpModule) serve(opt httpServerOptions) (*sobek.Object, error) {
 	hs.finalID = final.Add(hs.close)
 	context.AfterFunc(ctx, hs.close)
 
-	ret := hm.eng.Runtime().NewObject()
+	vm := hm.eng.Runtime()
+	ret := vm.NewObject()
 	if err := ret.Set("wait", hs.wait); err != nil {
 		return nil, err
 	}
 
 	go func() {
-		_ = srv.ListenAndServe()
+		err := srv.ListenAndServe()
+		hs.err = err
 		hs.close()
 	}()
 
@@ -81,6 +83,7 @@ type httpServer struct {
 	handler http.Handler
 	closed  atomic.Bool
 	finalID uint64
+	err     error
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
@@ -93,6 +96,9 @@ func (hs *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (hs *httpServer) wait() {
 	<-hs.ctx.Done()
+	if hs.err != nil {
+		panic(hs.eng.Runtime().NewGoError(hs.err))
+	}
 }
 
 func (hs *httpServer) close() {

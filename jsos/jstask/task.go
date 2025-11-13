@@ -56,9 +56,6 @@ func (t *jsTask) Engineer() jsvm.Engineer {
 }
 
 func (t *jsTask) exec(name, code string) error {
-	if !t.status.CompareAndSwap(TaskInitialize, TaskRunning) {
-		return nil
-	}
 	defer func() {
 		if v := recover(); v != nil {
 			t.status.Store(TaskPanicked)
@@ -66,7 +63,7 @@ func (t *jsTask) exec(name, code string) error {
 			t.status.Store(TaskStopped)
 		}
 	}()
-
+	t.status.Store(TaskRunning)
 	_, err := t.eng.RunScript(name, code)
 	t.err = err
 
