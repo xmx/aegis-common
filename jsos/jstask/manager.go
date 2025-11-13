@@ -9,7 +9,7 @@ import (
 )
 
 type Manager interface {
-	Exec(ctx context.Context, name, code string)
+	Exec(ctx context.Context, name, code string) error
 	Find(pid uint64) Tasker
 	Tasks() []Tasker
 }
@@ -28,7 +28,7 @@ type taskManager struct {
 	tasks map[uint64]*jsTask
 }
 
-func (m *taskManager) Exec(ctx context.Context, name, code string) {
+func (m *taskManager) Exec(ctx context.Context, name, code string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -57,8 +57,10 @@ func (m *taskManager) Exec(ctx context.Context, name, code string) {
 		m.mutex.Unlock()
 	}()
 
-	task.exec(name, code)
+	err := task.exec(name, code)
 	task.Kill("manager killed")
+
+	return err
 }
 
 func (m *taskManager) Find(pid uint64) Tasker {

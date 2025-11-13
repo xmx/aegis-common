@@ -55,9 +55,9 @@ func (t *jsTask) Engineer() jsvm.Engineer {
 	return t.eng
 }
 
-func (t *jsTask) exec(name, code string) {
+func (t *jsTask) exec(name, code string) error {
 	if !t.status.CompareAndSwap(TaskInitialize, TaskRunning) {
-		return
+		return nil
 	}
 	defer func() {
 		if v := recover(); v != nil {
@@ -69,4 +69,6 @@ func (t *jsTask) exec(name, code string) {
 
 	_, err := t.eng.RunScript(name, code)
 	t.err = err
+
+	return err
 }
