@@ -6,17 +6,11 @@ import (
 	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
-func NewTime(debug ...bool) jsvm.Module {
-	mod := new(stdTime)
-	if len(debug) > 0 {
-		mod.dbg = debug[0]
-	}
-
-	return mod
+func NewTime() jsvm.Module {
+	return new(stdTime)
 }
 
 type stdTime struct {
-	dbg bool
 	eng jsvm.Engineer
 }
 
@@ -59,9 +53,9 @@ func (mod *stdTime) Preload(eng jsvm.Engineer) (string, any, bool) {
 }
 
 func (mod *stdTime) sleep(d time.Duration) {
-	if !mod.dbg {
-		return
-	}
+	//if !mod.dbg {
+	//	return
+	//}
 
 	timer := time.NewTimer(d)
 	defer timer.Stop()
