@@ -2,6 +2,7 @@ package jsmod
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -29,91 +30,116 @@ type httpModule struct {
 	eng jsvm.Engineer
 }
 
-func (hm *httpModule) Preload(eng jsvm.Engineer) (string, any, bool) {
-	hm.eng = eng
+func (mod *httpModule) Preload(eng jsvm.Engineer) (string, any, bool) {
+	mod.eng = eng
 	vals := map[string]any{
-		"serve":       hm.serve,
-		"newServeMux": http.NewServeMux,
+		"createServer": mod.createServer,
+		"newServeMux":  http.NewServeMux,
 	}
 
 	return "net/http", vals, true
 }
 
-func (hm *httpModule) serve(opt httpServerOptions) (*sobek.Object, error) {
-	handler := opt.Handler
-	if handler == nil {
-		handler = http.NotFoundHandler()
+func (mod *httpModule) createServer(opt httpServerOptions) (*sobek.Object, error) {
+	vm := mod.eng.Runtime()
+	parent := mod.eng.Context()
+
+	ctx, cancel := context.WithCancelCause(parent)
+	hts := &httpServer{eng: mod.eng, opt: opt, ctx: ctx, cancel: cancel}
+
+	ret := vm.NewObject()
+	if err := ret.Set("listen", hts.listen); err != nil {
+		return nil, err
 	}
-	parent := hm.eng.Context()
-	ctx, cancel := context.WithCancel(parent)
-	hs := &httpServer{eng: hm.eng, handler: handler, ctx: ctx, cancel: cancel}
 	srv := &http.Server{
 		Addr:              opt.Addr,
-		Handler:           hs,
+		Handler:           hts,
 		ReadTimeout:       opt.ReadTimeout,
 		ReadHeaderTimeout: opt.ReadHeaderTimeout,
 		WriteTimeout:      opt.WriteTimeout,
 		IdleTimeout:       opt.IdleTimeout,
 		MaxHeaderBytes:    opt.MaxHeaderBytes,
 	}
-	hs.srv = srv
-	final := hm.eng.Finalizer()
-	hs.finalID = final.Add(hs.close)
-	context.AfterFunc(ctx, hs.close)
-
-	vm := hm.eng.Runtime()
-	ret := vm.NewObject()
-	if err := ret.Set("wait", hs.wait); err != nil {
-		return nil, err
-	}
-
-	go func() {
-		err := srv.ListenAndServe()
-		hs.err = err
-		hs.close()
-	}()
+	hts.srv = srv
 
 	return ret, nil
 }
 
 type httpServer struct {
 	eng     jsvm.Engineer
+	opt     httpServerOptions
 	srv     *http.Server
-	mutex   sync.Mutex
-	handler http.Handler
-	closed  atomic.Bool
 	finalID uint64
-	err     error
+	mutex   sync.Mutex
+	closed  atomic.Bool
 	ctx     context.Context
-	cancel  context.CancelFunc
+	cancel  context.CancelCauseFunc
 }
 
-func (hs *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hs.mutex.Lock()
-	defer hs.mutex.Unlock()
-	hs.handler.ServeHTTP(w, r)
-}
+func (hts *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	hts.mutex.Lock()
+	defer hts.mutex.Unlock()
 
-func (hs *httpServer) wait() {
-	<-hs.ctx.Done()
-	if hs.err != nil {
-		panic(hs.eng.Runtime().NewGoError(hs.err))
+	if h := hts.opt.Handler; h != nil {
+		h.ServeHTTP(w, r)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
-func (hs *httpServer) close() {
-	_ = hs.Close()
+func (hts *httpServer) listen(on ...func()) (*sobek.Object, error) {
+	vm := hts.eng.Runtime()
+	ret := vm.NewObject()
+	if err := ret.Set("wait", hts.wait); err != nil {
+		return nil, err
+	}
+
+	addr := hts.opt.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	if len(on) != 0 && on[0] != nil {
+		on[0]()
+	}
+
+	parent := hts.eng.Context()
+	closeFn := func() { _ = hts.close(context.Canceled) }
+	final := hts.eng.Finalizer()
+	hts.finalID = final.Add(closeFn)
+	context.AfterFunc(parent, closeFn)
+
+	go func() {
+		err1 := hts.srv.Serve(ln)
+		_ = hts.close(err1)
+	}()
+
+	return ret, nil
 }
 
-func (hs *httpServer) Close() error {
-	if !hs.closed.CompareAndSwap(false, true) {
-		return nil
-	}
-	hs.cancel()
+func (hts *httpServer) Close() error {
+	return hts.close(context.Canceled)
+}
 
-	if fid := hs.finalID; fid != 0 {
-		hs.eng.Finalizer().Del(fid)
+func (hts *httpServer) wait() error {
+	<-hts.ctx.Done()
+	return hts.ctx.Err()
+}
+
+func (hts *httpServer) close(cause error) error {
+	if !hts.closed.CompareAndSwap(false, true) {
+		return http.ErrServerClosed
 	}
 
-	return hs.srv.Close()
+	if fid := hts.finalID; fid != 0 {
+		hts.finalID = 0
+		final := hts.eng.Finalizer()
+		final.Del(fid)
+	}
+	hts.cancel(cause)
+
+	return hts.srv.Close()
 }
