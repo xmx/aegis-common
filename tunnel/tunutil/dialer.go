@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/xmx/aegis-common/tunnel/tundial"
+	"github.com/xmx/aegis-common/tunnel/tunopen"
 )
 
 type Dialer interface {
@@ -49,14 +49,14 @@ func (md *matchDialer) DialContext(ctx context.Context, network, address string)
 	return md.fallback.DialContext(ctx, network, address)
 }
 
-func NewMuxDialer(mux tundial.Muxer) Dialer {
+func NewMuxDialer(mux tunopen.Muxer) Dialer {
 	return &muxDialer{
 		mux: mux,
 	}
 }
 
 type muxDialer struct {
-	mux tundial.Muxer
+	mux tunopen.Muxer
 }
 
 func (m *muxDialer) DialContext(ctx context.Context, _, _ string) (net.Conn, error) {

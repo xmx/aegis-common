@@ -1,4 +1,4 @@
-package tunutil
+package tunopen
 
 import (
 	"encoding/binary"

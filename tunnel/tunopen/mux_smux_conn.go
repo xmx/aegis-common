@@ -1,4 +1,4 @@
-package tundial
+package tunopen
 
 import (
 	"net"
