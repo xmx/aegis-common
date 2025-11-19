@@ -8,11 +8,11 @@ import "net/url"
 // agent -> broker:  broker.aegis.internal
 
 const (
-	AgentHostSuffix       = ".agent.aegis.internal"
-	BrokerHost            = "broker.aegis.internal"
-	BrokerHostSuffix      = "." + BrokerHost
-	ServerHost            = "server.aegis.internal"
-	AgentBrokerHostSuffix = ".agent" + BrokerHostSuffix
+	AgentHostSuffix  = ".agent.aegis.internal"
+	BrokerHost       = "broker.aegis.internal"
+	BrokerHostSuffix = "." + BrokerHost
+	ServerHost       = "server.aegis.internal"
+	//AgentBrokerHostSuffix = ".agent" + BrokerHostSuffix
 )
 
 // ToServer broker/agent -> server
@@ -44,7 +44,7 @@ func BrokerToAgent(agentID string, pth string, ws ...bool) *url.URL {
 }
 
 func ServerToAgent(agentID string, pth string, ws ...bool) *url.URL {
-	return buildURL(agentID+AgentBrokerHostSuffix, pth, ws...)
+	return buildURL(agentID+AgentHostSuffix, pth, ws...)
 }
 
 func buildURL(host, pth string, ws ...bool) *url.URL {
