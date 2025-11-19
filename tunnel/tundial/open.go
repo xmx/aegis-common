@@ -69,10 +69,10 @@ func (c Config) open(proto, addr string) (Muxer, error) {
 	if proto == "tcp" {
 		return c.openHTTP(addr)
 	} else if proto == "udp-quic-std" {
-		return c.openStdQUIC(addr)
+		return c.openQUIC(addr)
 	}
 
-	return c.openQUIC(addr)
+	return c.openQUICGo(addr)
 }
 
 func (c Config) openHTTP(addr string) (Muxer, error) {
@@ -101,7 +101,7 @@ func (c Config) openHTTP(addr string) (Muxer, error) {
 	return mux, nil
 }
 
-func (c Config) openQUIC(addr string) (Muxer, error) {
+func (c Config) openQUICGo(addr string) (Muxer, error) {
 	ctx, cancel := c.context()
 	defer cancel()
 
@@ -112,17 +112,18 @@ func (c Config) openQUIC(addr string) (Muxer, error) {
 			KeepAlivePeriod: 10 * time.Second,
 		}
 	}
+
 	conn, err := quicgo.DialAddr(ctx, addr, tlsCfg, quicCfg)
 	if err != nil {
 		return nil, err
 	}
-	mux := NewQUIC(c.Parent, conn)
+	mux := NewQUICGo(c.Parent, conn)
 
 	return mux, nil
 }
 
 // openStdQUIC 标准库的 quic 存在 bug，经常性的 context canceled。
-func (c Config) openStdQUIC(addr string) (Muxer, error) {
+func (c Config) openQUIC(addr string) (Muxer, error) {
 	endpoint, err := quic.Listen("udp", "", nil)
 	if err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func (c Config) openStdQUIC(addr string) (Muxer, error) {
 
 		return nil, err1
 	}
-	mux := NewStdQUIC(c.Parent, endpoint, conn)
+	mux := NewQUIC(c.Parent, endpoint, conn)
 
 	return mux, nil
 }

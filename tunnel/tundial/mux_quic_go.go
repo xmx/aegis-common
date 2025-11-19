@@ -7,7 +7,7 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func NewQUIC(parent context.Context, conn *quic.Conn) Muxer {
+func NewQUICGo(parent context.Context, conn *quic.Conn) Muxer {
 	if parent == nil {
 		parent = context.Background()
 	}

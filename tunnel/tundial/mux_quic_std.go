@@ -10,8 +10,8 @@ import (
 	"golang.org/x/net/quic"
 )
 
-// NewStdQUIC 标准 QUIC 库还在实验阶段，不稳定。
-func NewStdQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn) Muxer {
+// NewQUIC 标准 QUIC 库还在实验阶段，不稳定。
+func NewQUIC(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn) Muxer {
 	if parent == nil {
 		parent = context.Background()
 	}
