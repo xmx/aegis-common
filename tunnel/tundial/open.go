@@ -30,20 +30,20 @@ type Config struct {
 	// WebSocketDialer tcp 模式下会通过 websocket 建立通道，
 	// 其实自己实现的 HTTP Streamable 也可以，但是 websocket
 	// 在有网关、反代的情况下，具有良好的通过性。
-	WebSocketDialer *websocket.Dialer
+	WebSocketDialer *websocket.Dialer `json:"-"`
 
 	// WebSocketPath tcp 模式下 websocket 的请求路径。
 	// 默认：/api/tunnel
-	WebSocketPath string
+	WebSocketPath string `json:"websocket_path"`
 
 	// QUICConfig 使用标准库 quic 连接时会用到。
-	QUICConfig *quic.Config
+	QUICConfig *quic.Config `json:"-"`
 
 	// QUICGoConfig 使用 quic-go 连接时会用到。
-	QUICGoConfig *quicgo.Config
+	QUICGoConfig *quicgo.Config `json:"-"`
 
 	// TLSConfig tcp/udp 模式下如果没有配置 TLSConfig 就会使用该配置。
-	TLSConfig *tls.Config
+	TLSConfig *tls.Config `json:"-"`
 
 	// Parent 总的 context，在 quic 模式下有用。
 	Parent context.Context `json:"-"`
