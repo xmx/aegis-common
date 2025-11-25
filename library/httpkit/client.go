@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/xmx/aegis-common/problem"
 )
 
 func NewClient(c *http.Client) Client {
@@ -149,6 +151,11 @@ func (c Client) send(req *http.Request) (*http.Response, error) {
 	n, _ := io.ReadFull(resp.Body, buf)
 	_ = resp.Body.Close()
 	e.Body = buf[:n]
+
+	prob := new(problem.Details)
+	if err = json.Unmarshal(buf[:n], prob); err == nil && prob.Status != 0 {
+		return nil, prob
+	}
 
 	return nil, e
 }

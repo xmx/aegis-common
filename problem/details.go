@@ -63,3 +63,7 @@ func (d Details) String() string {
 		", detail='" + d.Detail + "'" +
 		", instance='" + d.Instance + "'"
 }
+
+func (d Details) Error() string {
+	return d.String()
+}

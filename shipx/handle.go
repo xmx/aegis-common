@@ -19,21 +19,29 @@ func NotFound(_ *ship.Context) error {
 }
 
 func HandleError(c *ship.Context, e error) {
-	pd := &problem.Details{
-		Host:     c.Host(),
-		Instance: c.Path(),
-		Method:   c.Method(),
-		Datetime: time.Now().UTC(),
-	}
-	ei, _ := AssertError(e)
-	if ei != nil {
-		pd.Title = ei.Title
-		pd.Detail = ei.Detail
-		pd.Status = ei.Status
-	} else {
-		pd.Title = "请求错误"
-		pd.Detail = e.Error()
-		pd.Status = http.StatusBadRequest
+	var pd *problem.Details
+	switch t := e.(type) {
+	case *problem.Details:
+		pd = t
+	case problem.Details:
+		pd = &t
+	default:
+		pd = &problem.Details{
+			Host:     c.Host(),
+			Instance: c.Path(),
+			Method:   c.Method(),
+			Datetime: time.Now().UTC(),
+		}
+
+		if ei, _ := AssertError(e); ei != nil {
+			pd.Title = ei.Title
+			pd.Detail = ei.Detail
+			pd.Status = ei.Status
+		} else {
+			pd.Title = "请求错误"
+			pd.Detail = e.Error()
+			pd.Status = http.StatusBadRequest
+		}
 	}
 
 	_ = c.JSON(pd.Status, pd)
