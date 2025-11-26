@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func Customs() []CustomValidatorFunc {
+func All() []CustomValidatorFunc {
 	return []CustomValidatorFunc{
 		uniqueFunc,
 	}
