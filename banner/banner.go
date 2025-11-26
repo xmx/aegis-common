@@ -52,6 +52,7 @@ var (
 	buildPath   string
 	compileAt   time.Time // 处理后的编译时间
 	commitAt    time.Time
+	buildInfo   *buildinfo.BuildInfo
 	parseOnce   = sync.OnceFunc(parse)
 )
 
@@ -66,12 +67,12 @@ func parse() {
 	workdir, _ = os.Getwd()
 	compileAt = parseTime(compileTime)
 
-	bi, _ := debug.ReadBuildInfo()
-	if bi == nil {
+	buildInfo, _ = debug.ReadBuildInfo()
+	if buildInfo == nil {
 		return
 	}
-	buildPath = path.Dir(bi.Path)
-	settings := bi.Settings
+	buildPath = path.Dir(buildInfo.Path)
+	settings := buildInfo.Settings
 	for _, set := range settings {
 		key, val := set.Key, set.Value
 		switch key {
@@ -82,7 +83,7 @@ func parse() {
 		}
 	}
 
-	inf := ParseInfo(bi)
+	inf := ParseInfo(buildInfo)
 	if version == "" && inf.Version != "" {
 		version = "v" + inf.Version
 	}
@@ -147,4 +148,13 @@ func ParseInfo(bi *buildinfo.BuildInfo) *Info {
 	}
 
 	return inf
+}
+
+func SelfInfo() *Info {
+	parseOnce()
+	if buildInfo == nil {
+		return new(Info)
+	}
+
+	return ParseInfo(buildInfo)
 }
