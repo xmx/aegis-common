@@ -2,18 +2,10 @@ package logger
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 )
-
-func NewHandler(hs ...slog.Handler) Handler {
-	dh := &dynamicHandler{hds: make(map[slog.Handler]struct{}, 8)}
-	dh.Attach(hs...)
-
-	return dh
-}
 
 type Handler interface {
 	slog.Handler
@@ -22,116 +14,98 @@ type Handler interface {
 	Replace(hs ...slog.Handler)
 }
 
-type dynamicHandler struct {
-	atm atomic.Value
+func NewMultiHandler(hs ...slog.Handler) Handler {
+	mh := new(multiHandler)
+	mh.Replace(hs...)
+
+	return mh
+}
+
+type multiHandler struct {
 	mtx sync.Mutex
-	hds map[slog.Handler]struct{}
+	out map[slog.Handler]struct{}
+	ptr atomic.Pointer[slog.MultiHandler]
 }
 
-func (dh *dynamicHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	h := dh.atm.Load().(multiHandlers)
-	return h.Enabled(ctx, level)
+func (h *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.load().Enabled(ctx, level)
 }
 
-func (dh *dynamicHandler) Handle(ctx context.Context, record slog.Record) error {
-	h := dh.atm.Load().(multiHandlers)
-	return h.Handle(ctx, record)
+func (h *multiHandler) Handle(ctx context.Context, record slog.Record) error {
+	return h.load().Handle(ctx, record)
 }
 
-func (dh *dynamicHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	h := dh.atm.Load().(multiHandlers)
-	return h.WithAttrs(attrs)
+func (h *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h.load().WithAttrs(attrs)
 }
 
-func (dh *dynamicHandler) WithGroup(name string) slog.Handler {
-	h := dh.atm.Load().(multiHandlers)
-	return h.WithGroup(name)
+func (h *multiHandler) WithGroup(name string) slog.Handler {
+	return h.load().WithGroup(name)
 }
 
-func (dh *dynamicHandler) Attach(hs ...slog.Handler) {
-	dh.mtx.Lock()
-	for _, h := range hs {
-		if h == nil {
+func (h *multiHandler) Attach(hs ...slog.Handler) {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+
+	if h.out == nil {
+		h.out = make(map[slog.Handler]struct{}, 8)
+	}
+	for _, mh := range hs {
+		if mh != nil {
+			h.out[mh] = struct{}{}
+		}
+	}
+
+	h.replace(h.out)
+}
+
+func (h *multiHandler) Detach(hs ...slog.Handler) {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+
+	for _, mh := range hs {
+		delete(h.out, mh)
+	}
+
+	h.replace(h.out)
+}
+
+func (h *multiHandler) Replace(hs ...slog.Handler) {
+	out := make(map[slog.Handler]struct{}, len(hs))
+	arr := make([]slog.Handler, 0, len(hs))
+	for _, mh := range hs {
+		if mh == nil {
 			continue
 		}
-		dh.hds[h] = struct{}{}
-	}
-	dh.reload()
-	dh.mtx.Unlock()
-}
-
-func (dh *dynamicHandler) Detach(hs ...slog.Handler) {
-	dh.mtx.Lock()
-	for _, h := range hs {
-		if h == nil {
+		if _, exists := out[mh]; exists {
 			continue
 		}
-		delete(dh.hds, h)
+
+		out[mh] = struct{}{}
+		arr = append(arr, mh)
 	}
-	dh.reload()
-	dh.mtx.Unlock()
+
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	h.out = out
+	mh := slog.NewMultiHandler(hs...)
+	h.ptr.Store(mh)
 }
 
-func (dh *dynamicHandler) Replace(hs ...slog.Handler) {
-	dh.mtx.Lock()
-	clear(dh.hds)
-	for _, h := range hs {
-		if h == nil {
-			continue
-		}
-		dh.hds[h] = struct{}{}
+func (h *multiHandler) load() *slog.MultiHandler {
+	if mh := h.ptr.Load(); mh != nil {
+		return mh
 	}
-	dh.reload()
-	dh.mtx.Unlock()
+	return slog.NewMultiHandler()
 }
 
-func (dh *dynamicHandler) reload() {
-	mhs := make(multiHandlers, 0, len(dh.hds))
-	for h := range dh.hds {
-		mhs = append(mhs, h)
-	}
-	dh.atm.Store(mhs)
-}
-
-type multiHandlers []slog.Handler
-
-func (mhs multiHandlers) Enabled(ctx context.Context, l slog.Level) bool {
-	for _, h := range mhs {
-		if h.Enabled(ctx, l) {
-			return true
-		}
+func (h *multiHandler) replace(out map[slog.Handler]struct{}) {
+	hs := make([]slog.Handler, 0, len(out))
+	for k := range out {
+		hs = append(hs, k)
 	}
 
-	return false
-}
-
-func (mhs multiHandlers) Handle(ctx context.Context, r slog.Record) error {
-	var errs []error
-	for _, h := range mhs {
-		if h.Enabled(ctx, r.Level) {
-			if err := h.Handle(ctx, r.Clone()); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
-func (mhs multiHandlers) WithAttrs(attrs []slog.Attr) slog.Handler {
-	handlers := make([]slog.Handler, 0, len(mhs))
-	for _, h := range mhs {
-		handlers = append(handlers, h.WithAttrs(attrs))
-	}
-
-	return multiHandlers(handlers)
-}
-
-func (mhs multiHandlers) WithGroup(name string) slog.Handler {
-	handlers := make([]slog.Handler, 0, len(mhs))
-	for _, h := range mhs {
-		handlers = append(handlers, h.WithGroup(name))
-	}
-
-	return multiHandlers(handlers)
+	h.out = out
+	mh := slog.NewMultiHandler(hs...)
+	h.ptr.Store(mh)
 }
