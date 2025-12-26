@@ -5,9 +5,10 @@ go 1.26
 require (
 	github.com/creack/pty v1.1.24
 	github.com/evanw/esbuild v0.27.2
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
-	github.com/go-playground/validator/v10 v10.30.0
+	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/grafana/sobek v0.0.0-20251209155516-22d1085c20a8
 	github.com/lmittmann/tint v1.1.2

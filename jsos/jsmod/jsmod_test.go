@@ -2,7 +2,6 @@ package jsmod_test
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"testing"
 
@@ -29,23 +28,15 @@ func TestVariable(t *testing.T) {
 }
 
 func newVM() jsvm.Engineer {
-	vm := jsvm.New(context.Background())
-	vm.Require().Registers(jsmod.Modules())
+	vm := jsvm.NewVM(context.Background())
+	vm.Require().Registers(jsmod.NewConsole())
 	stdout, _ := vm.Output()
-	stdout.Attach(os.Stdout)
+	stdout.Append(os.Stdout)
 
 	return vm
 }
 
 func TestPrint(t *testing.T) {
 	vm := newVM()
-	vm.Require().Registers(jsmod.Modules())
-	stdout, _ := vm.Output()
-	stdout.Attach(os.Stdout)
-
 	vm.RunScript("s", "import console from 'console'\nconsole.log('hello world')\nconsole.log('hello world')")
-}
-
-func sss(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
 }

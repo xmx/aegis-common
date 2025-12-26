@@ -7,41 +7,40 @@ import (
 )
 
 type Module interface {
-	Preload(eng Engineer) (modname string, modvalue any, override bool)
+	Preload(svm Engineer) (modname string, modvalue any, override bool)
 }
 
 type Requirer interface {
-	// Register 注册模块。
-	Register(mod Module)
-	Registers(mods []Module)
+	// Registers 注册模块。
+	Registers(mods ...Module)
 }
 
-func injectRequire(eng *sobekVM) *sobekRequire {
+func newRequire(svm *sobekVM) *sobekRequire {
 	sr := &sobekRequire{
-		engine:  eng,
+		svm:     svm,
 		modules: make(map[string]sobek.Value, 16),
 		sources: make(map[string]sobek.Value, 16),
 	}
-	rt := eng.Runtime()
+	rt := svm.Runtime()
 	_ = rt.Set("require", sr.require)
 
 	return sr
 }
 
 type sobekRequire struct {
-	engine  *sobekVM
+	svm     *sobekVM
 	modules map[string]sobek.Value
 	sources map[string]sobek.Value
 }
 
-func (sr *sobekRequire) Register(mod Module) {
-	sr.Registers([]Module{mod})
-}
+func (sr *sobekRequire) Registers(mods ...Module) {
+	if sr.svm.closedError() != nil {
+		return
+	}
 
-func (sr *sobekRequire) Registers(mods []Module) {
-	eng := sr.engine
+	svm := sr.svm
 	for _, mod := range mods {
-		name, value, override := mod.Preload(eng)
+		name, value, override := mod.Preload(svm)
 		sr.register(name, value, override)
 	}
 }
@@ -53,7 +52,7 @@ func (sr *sobekRequire) register(name string, mod any, override bool) bool {
 		return false
 	}
 
-	rt := sr.engine.Runtime()
+	rt := sr.svm.Runtime()
 	value := rt.ToValue(mod)
 	sr.modules[name] = value
 
@@ -74,7 +73,7 @@ func (sr *sobekRequire) require(call sobek.FunctionCall) sobek.Value {
 		}
 	}
 
-	rt := sr.engine.Runtime()
+	rt := sr.svm.Runtime()
 	if err != nil && !os.IsNotExist(err) {
 		panic(rt.NewTypeError("cannot find module '%s': ", name, err.Error()))
 	}

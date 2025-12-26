@@ -5,20 +5,13 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/grafana/sobek"
 	"github.com/grafana/sobek/parser"
 )
 
-func newJSONTagName() sobek.FieldNameMapper {
-	return &fieldNameMapper{tagName: "json"}
-}
+type tagMapper string
 
-type fieldNameMapper struct {
-	tagName string
-}
-
-func (fnm *fieldNameMapper) FieldName(t reflect.Type, f reflect.StructField) string {
-	tag := f.Tag.Get(fnm.tagName)
+func (tm tagMapper) FieldName(t reflect.Type, f reflect.StructField) string {
+	tag := f.Tag.Get(string(tm))
 	if idx := strings.IndexByte(tag, ','); idx != -1 {
 		tag = tag[:idx]
 	}
@@ -26,11 +19,11 @@ func (fnm *fieldNameMapper) FieldName(t reflect.Type, f reflect.StructField) str
 		return tag
 	}
 
-	return fnm.lowerCase(f.Name)
+	return tm.lowerCase(f.Name)
 }
 
-func (fnm *fieldNameMapper) MethodName(_ reflect.Type, m reflect.Method) string {
-	return fnm.lowerCase(m.Name)
+func (tm tagMapper) MethodName(_ reflect.Type, m reflect.Method) string {
+	return tm.lowerCase(m.Name)
 }
 
 // lowerCase 将 Go 可导出变量转为 JS 风格的变量。
@@ -39,7 +32,7 @@ func (fnm *fieldNameMapper) MethodName(_ reflect.Type, m reflect.Method) string 
 //	MyHTTP -> myHTTP
 //	CopyN -> copyN
 //	N -> n
-func (*fieldNameMapper) lowerCase(s string) string {
+func (tagMapper) lowerCase(s string) string {
 	runes := []rune(s)
 	size := len(runes)
 	for i, r := range runes {

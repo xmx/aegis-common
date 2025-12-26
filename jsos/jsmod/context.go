@@ -10,12 +10,14 @@ func NewContext() jsvm.Module {
 	return new(stdContext)
 }
 
-type stdContext struct{}
+type stdContext struct {
+	eng jsvm.Engineer
+}
 
-func (*stdContext) Preload(jsvm.Engineer) (string, any, bool) {
+func (mod *stdContext) Preload(eng jsvm.Engineer) (string, any, bool) {
+	mod.eng = eng
 	vals := map[string]any{
 		"background":   context.Background,
-		"todo":         context.TODO,
 		"withCancel":   context.WithCancel,
 		"withTimeout":  context.WithTimeout,
 		"withValue":    context.WithValue,
