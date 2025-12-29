@@ -1,9 +1,7 @@
 package cron
 
 import (
-	"context"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/grafana/sobek"
@@ -12,16 +10,16 @@ import (
 )
 
 func New() jsvm.Module {
-	return new(cronLoad)
+	return new(cronPackage)
 }
 
-type cronLoad struct {
-	eng jsvm.Engineer
+type cronPackage struct {
+	svm jsvm.Engineer
+	mtx sync.Mutex
 }
 
-func (cl *cronLoad) Preload(eng jsvm.Engineer) (string, any, bool) {
-	cl.eng = eng
-
+func (cp *cronPackage) Preload(svm jsvm.Engineer) (string, any, bool) {
+	cp.svm = svm
 	vals := map[string]any{
 		"secondOptional": cron.SecondOptional,
 		"second":         cron.Second,
@@ -31,103 +29,80 @@ func (cl *cronLoad) Preload(eng jsvm.Engineer) (string, any, bool) {
 		"month":          cron.Month,
 		"dow":            cron.Dow,
 		"descriptor":     cron.Descriptor,
-		"new":            cl.newCron,
 		"withSeconds":    cron.WithSeconds,
 		"withLocation":   cron.WithLocation,
 		"withParser":     cron.WithParser,
 		"newParser":      cron.NewParser,
 		"every":          cron.Every,
 		"parseStandard":  cron.ParseStandard,
+		"new":            cp.newCron,
 	}
 
 	return "github.com/robfig/cron/v3", vals, true
 }
 
-func (cl *cronLoad) newCron(opts ...cron.Option) (*sobek.Object, error) {
-	mod := &cronModule{eng: cl.eng, done: make(chan struct{})}
+func (cp *cronPackage) serializer(job cron.Job) cron.Job {
+	return cron.FuncJob(func() {
+		cp.mtx.Lock()
+		defer cp.mtx.Unlock()
 
-	opts = append(opts, cron.WithChain(mod.serializer)) // 防止并发 panic
+		job.Run()
+	})
+}
+
+func (cp *cronPackage) newCron(opts ...cron.Option) (*sobek.Object, error) {
+	opts = append(opts, cron.WithChain(cp.serializer)) // 串行执行。
 	ctab := cron.New(opts...)
-	mod.ctab = ctab
+	ct := &cronTab{ctab: ctab}
+	cp.svm.Defer().Append(ct.close)
 
-	final := cl.eng.Finalizer()
-	final.Add(mod.stop)
-
-	vm := cl.eng.Runtime()
-	obj := vm.NewObject()
-	if err := obj.Set("start", mod.start); err != nil {
+	obj := cp.svm.Runtime().NewObject()
+	if err := obj.Set("run", ct.run); err != nil {
 		return nil, err
 	}
-	if err := obj.Set("stop", mod.stop); err != nil {
+	if err := obj.Set("addJob", ct.addJob); err != nil {
 		return nil, err
 	}
-	if err := obj.Set("addJob", mod.addJob); err != nil {
+	if err := obj.Set("schedule", ct.schedule); err != nil {
 		return nil, err
 	}
-	if err := obj.Set("schedule", mod.schedule); err != nil {
+	if err := obj.Set("remove", ct.remove); err != nil {
 		return nil, err
 	}
-	if err := obj.Set("remove", mod.remove); err != nil {
-		return nil, err
-	}
-	if err := obj.Set("entries", mod.entries); err != nil {
-		return nil, err
-	}
-	if err := obj.Set("wait", mod.wait); err != nil {
+	if err := obj.Set("entries", ct.entries); err != nil {
 		return nil, err
 	}
 
-	return obj, nil
+	return nil, nil
 }
 
-type cronModule struct {
-	eng     jsvm.Engineer
-	ctab    *cron.Cron
-	done    chan struct{}
-	closed  atomic.Bool
-	mutex   sync.Mutex
-	running bool
+type cronTab struct {
+	ctab *cron.Cron
 }
 
-func (cl *cronModule) start() {
-	cl.ctab.Start()
+func (ct *cronTab) run() {
+	ct.ctab.Run()
 }
 
-func (cl *cronModule) stop() {
-	if !cl.closed.CompareAndSwap(false, true) {
-		return
-	}
-	cl.ctab.Stop()
-	close(cl.done)
+func (ct *cronTab) close() error {
+	ct.ctab.Stop()
+	return nil
 }
 
-func (cl *cronModule) addJob(spec string, cmd func()) (cron.EntryID, error) {
-	return cl.ctab.AddJob(spec, cron.FuncJob(cmd))
+func (ct *cronTab) addJob(spec string, cmd func()) (cron.EntryID, error) {
+	return ct.ctab.AddJob(spec, cron.FuncJob(cmd))
 }
 
-func (cl *cronModule) schedule(sched cron.Schedule, cmd func()) cron.EntryID {
-	return cl.ctab.Schedule(sched, cron.FuncJob(cmd))
+func (ct *cronTab) schedule(sched cron.Schedule, cmd func()) cron.EntryID {
+	return ct.ctab.Schedule(sched, cron.FuncJob(cmd))
 }
 
-func (cl *cronModule) remove(id cron.EntryID) {
-	cl.ctab.Remove(id)
+func (ct *cronTab) remove(id cron.EntryID) {
+	ct.ctab.Remove(id)
 }
 
-func (cl *cronModule) wait(ctx context.Context) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	parent := cl.eng.Context()
-
-	select {
-	case <-parent.Done():
-	case <-ctx.Done():
-	case <-cl.done:
-	}
-}
-
-func (cl *cronModule) entries() []*entry {
-	ents := cl.ctab.Entries()
+func (ct *cronTab) entries() []*entry {
+	ents := ct.ctab.Entries()
 	result := make([]*entry, 0, len(ents))
 	for _, ent := range ents {
 		result = append(result, &entry{
@@ -138,15 +113,6 @@ func (cl *cronModule) entries() []*entry {
 	}
 
 	return result
-}
-
-func (cl *cronModule) serializer(job cron.Job) cron.Job {
-	return cron.FuncJob(func() {
-		cl.mutex.Lock()
-		defer cl.mutex.Unlock()
-
-		job.Run()
-	})
 }
 
 type entry struct {

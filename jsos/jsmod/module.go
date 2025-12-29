@@ -10,6 +10,7 @@ func All() []jsvm.Module {
 		NewHTTPUtil(),
 		NewNet(),
 		NewOS(),
+		NewRegexp(),
 		NewRuntime(),
 		NewTime(),
 		NewURL(),

@@ -1,11 +1,9 @@
 package jsmod
 
 import (
-	"context"
 	"net/http"
 	"sync"
 
-	"github.com/grafana/sobek"
 	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
@@ -20,41 +18,36 @@ type stdHTTP struct {
 
 func (s *stdHTTP) Preload(svm jsvm.Engineer) (string, any, bool) {
 	s.svm = svm
-	obj := svm.Runtime().NewObject()
-	_ = obj.Set("listenAndServe", s.listenAndServe)
-	_ = obj.Set("canonicalHeaderKey", http.CanonicalHeaderKey)
-	_ = obj.Set("notFoundHandler", http.NotFoundHandler)
-
-	return "net/http", obj, true
-}
-
-func (s *stdHTTP) listenAndServe(addr string, h http.Handler) (sobek.Value, error) {
-
-	rt := s.svm.Runtime()
-	obj := rt.NewObject()
-
-	return nil, nil
-}
-
-type stdHTTPServer struct {
-	svm    *sobek.Runtime
-	srv    *http.Server
-	fid    uint64
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (s *stdHTTPServer) close() error {
-	return s.srv.Close()
-}
-
-func (s *stdHTTPServer) wait(ctx context.Context) {
-	if ctx == nil {
-		ctx = context.Background()
+	vals := map[string]any{
+		"listenAndServe":     s.listenAndServe,
+		"canonicalHeaderKey": http.CanonicalHeaderKey,
+		"notFoundHandler":    http.NotFoundHandler,
+		"newServeMux":        http.NewServeMux,
 	}
 
-	select {
-	case <-ctx.Done():
-	case <-s.ctx.Done():
+	return "net/http", vals, true
+}
+
+func (s *stdHTTP) listenAndServe(addr string, h http.Handler) error {
+	if h == nil {
+		h = http.NotFoundHandler()
 	}
+
+	sh := &safeHandler{han: h}
+	srv := &http.Server{Addr: addr, Handler: sh}
+	s.svm.Defer().Append(srv.Close)
+
+	return srv.ListenAndServe()
+}
+
+type safeHandler struct {
+	mtx sync.Mutex
+	han http.Handler
+}
+
+func (s *safeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	s.han.ServeHTTP(w, r)
 }

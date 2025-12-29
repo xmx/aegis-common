@@ -29,14 +29,9 @@ func TestVariable(t *testing.T) {
 
 func newVM() jsvm.Engineer {
 	vm := jsvm.NewVM(context.Background())
-	vm.Require().Registers(jsmod.NewConsole())
+	vm.Require().Registers(jsmod.All()...)
 	stdout, _ := vm.Output()
 	stdout.Append(os.Stdout)
 
 	return vm
-}
-
-func TestPrint(t *testing.T) {
-	vm := newVM()
-	vm.RunScript("s", "import console from 'console'\nconsole.log('hello world')\nconsole.log('hello world')")
 }

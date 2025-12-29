@@ -20,13 +20,7 @@ ctab.schedule(cron.every(time.second), () => {
   console.log(`EVERY ${cnt}`)
 })
 
-const parent = context.background()
-const [ctx, cancel] = context.withTimeout(parent, time.minute)
-try {
-  ctab.wait(ctx)
-} finally {
-  cancel()
-}
+ctab.run() // blocking
 ```
 
 ## const
@@ -44,14 +38,3 @@ try {
 - `new`
 
 - `descriptor`
-
-## object
-
-`Cron` 对象
-
-```js
-const ctab = cron.new()
-ctab.stop()
-ctab.addJob()
-ctab.schedule()
-```
