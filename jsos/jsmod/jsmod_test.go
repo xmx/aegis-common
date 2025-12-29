@@ -24,6 +24,7 @@ func TestVariable(t *testing.T) {
 		t.Log(err)
 		return
 	}
+
 	t.Log(val)
 }
 

@@ -17,8 +17,6 @@ type Engineer interface {
 	Compile(name, code string, strict bool) (*sobek.Program, error)
 	RunScript(name, code string) (sobek.Value, error)
 	RunProgram(pgm *sobek.Program) (sobek.Value, error)
-	RerunScript(name, code string) (sobek.Value, error)
-	RerunProgram(pgm *sobek.Program) (sobek.Value, error)
 	Output() (stdout, stderr Writer)
 	Require() Requirer
 	Defer() Defer
@@ -90,29 +88,6 @@ func (svm *sobekVM) RunProgram(pgm *sobek.Program) (sobek.Value, error) {
 	if err := svm.closedError(); err != nil {
 		return nil, err
 	}
-
-	return svm.vm.RunProgram(pgm)
-}
-
-func (svm *sobekVM) RerunScript(name, code string) (sobek.Value, error) {
-	pgm, err := svm.Compile(name, code, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return svm.RerunProgram(pgm)
-}
-
-func (svm *sobekVM) RerunProgram(pgm *sobek.Program) (sobek.Value, error) {
-	if err := svm.closedError(); err != nil {
-		return nil, err
-	}
-
-	svm.vm.Interrupt("rerun program")
-	if err := svm.deferment.call(); err != nil {
-		return nil, err
-	}
-	svm.vm.ClearInterrupt()
 
 	return svm.vm.RunProgram(pgm)
 }
