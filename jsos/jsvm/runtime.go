@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/grafana/sobek"
@@ -23,9 +24,11 @@ type Engineer interface {
 
 	// Kill 结束虚拟机
 	Kill(v any) error
+
+	Logger() *slog.Logger
 }
 
-func NewVM(parent context.Context) Engineer {
+func NewVM(parent context.Context, log *slog.Logger) Engineer {
 	if parent == nil {
 		parent = context.Background()
 	}
@@ -54,6 +57,7 @@ type sobekVM struct {
 	stderr    Writer
 	closed    atomic.Bool
 	deferment *deferment
+	log       *slog.Logger
 	ctx       context.Context
 	cancel    context.CancelCauseFunc
 }
@@ -102,6 +106,14 @@ func (svm *sobekVM) Require() Requirer {
 
 func (svm *sobekVM) Defer() Defer {
 	return svm.deferment
+}
+
+func (svm *sobekVM) Logger() *slog.Logger {
+	if svm.log != nil {
+		return svm.log
+	}
+
+	return slog.Default()
 }
 
 func (svm *sobekVM) Kill(v any) error {

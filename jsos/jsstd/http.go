@@ -1,4 +1,4 @@
-package jsmod
+package jsstd
 
 import (
 	"net/http"
@@ -35,7 +35,10 @@ func (s *stdHTTP) listenAndServe(addr string, h http.Handler) error {
 
 	sh := &safeHandler{han: h}
 	srv := &http.Server{Addr: addr, Handler: sh}
-	s.svm.Defer().Append(srv.Close)
+	s.svm.Defer().Append(func() error {
+		s.svm.Logger().Warn("net/http 服务停止了")
+		return srv.Close()
+	})
 
 	return srv.ListenAndServe()
 }

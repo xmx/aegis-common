@@ -1,4 +1,4 @@
-package jsmod
+package jsstd
 
 import "github.com/xmx/aegis-common/jsos/jsvm"
 

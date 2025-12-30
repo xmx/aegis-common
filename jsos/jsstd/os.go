@@ -1,4 +1,4 @@
-package jsmod
+package jsstd
 
 import (
 	"os"

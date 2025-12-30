@@ -6,66 +6,35 @@ import (
 	"github.com/xmx/aegis-common/jsos/jsvm"
 )
 
-const (
-	TaskInitialize uint32 = iota
-	TaskRunning
-	TaskStopped
-	TaskPanicked
-)
-
-type Tasker interface {
-	PID() uint64
-	Status() uint32
-	Name() string
-	Kill(cause any)
-	Error() error
-	Engineer() jsvm.Engineer
+type Task struct {
+	svm     jsvm.Engineer
+	name    string
+	code    string
+	sha1sum string
+	killed  atomic.Bool
 }
 
-type jsTask struct {
-	pid    uint64
-	name   string
-	code   string
-	eng    jsvm.Engineer
-	err    error
-	status atomic.Uint32
+func (tsk *Task) Info() (string, string, string) {
+	return tsk.name, tsk.code, tsk.sha1sum
 }
 
-func (t *jsTask) PID() uint64 {
-	return t.pid
+func (tsk *Task) Output() (jsvm.Writer, jsvm.Writer) {
+	return tsk.svm.Output()
 }
 
-func (t *jsTask) Status() uint32 {
-	return t.status.Load()
+func (tsk *Task) kill(v any) error {
+	if !tsk.killed.CompareAndSwap(false, true) {
+		return &TaskError{Name: tsk.name, Text: "任务已结束"}
+	}
+
+	return tsk.svm.Kill(v)
 }
 
-func (t *jsTask) Name() string {
-	return t.name
+type TaskError struct {
+	Name string `json:"name"`
+	Text string `json:"text"`
 }
 
-func (t *jsTask) Kill(cause any) {
-	t.eng.Kill(cause)
-}
-
-func (t *jsTask) Error() error {
-	return t.err
-}
-
-func (t *jsTask) Engineer() jsvm.Engineer {
-	return t.eng
-}
-
-func (t *jsTask) exec(name, code string) error {
-	defer func() {
-		if v := recover(); v != nil {
-			t.status.Store(TaskPanicked)
-		} else {
-			t.status.Store(TaskStopped)
-		}
-	}()
-	t.status.Store(TaskRunning)
-	_, err := t.eng.RunScript(name, code)
-	t.err = err
-
-	return err
+func (t *TaskError) Error() string {
+	return t.Name + ": " + t.Text
 }
