@@ -1,7 +1,11 @@
 package jstask
 
 import (
+	"cmp"
+	"context"
+	"slices"
 	"sync/atomic"
+	"time"
 
 	"github.com/xmx/aegis-common/jsos/jsvm"
 )
@@ -11,6 +15,7 @@ type Task struct {
 	name    string
 	code    string
 	sha1sum string
+	startAt time.Time
 	killed  atomic.Bool
 }
 
@@ -20,6 +25,14 @@ func (tsk *Task) Info() (string, string, string) {
 
 func (tsk *Task) Output() (jsvm.Writer, jsvm.Writer) {
 	return tsk.svm.Output()
+}
+
+func (tsk *Task) StartAt() time.Time {
+	return tsk.startAt
+}
+
+func (tsk *Task) Context() context.Context {
+	return tsk.svm.Context()
 }
 
 func (tsk *Task) kill(v any) error {
@@ -37,4 +50,16 @@ type TaskError struct {
 
 func (t *TaskError) Error() string {
 	return t.Name + ": " + t.Text
+}
+
+type Tasks []*Task
+
+func (tasks Tasks) Sort() {
+	slices.SortFunc(tasks, func(a, b *Task) int {
+		aat, bat := a.startAt, b.startAt
+		if n := aat.Compare(bat); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.name, b.name)
+	})
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/grafana/sobek"
 	"github.com/xmx/aegis-common/jsos/jsvm"
@@ -21,6 +22,8 @@ type Manager interface {
 
 	// Kill 结束任务。
 	Kill(name string, v any) error
+
+	Tasks() Tasks
 }
 
 type Options struct {
@@ -85,6 +88,7 @@ func (mana *managers) Exec(parent context.Context, name, code string) (bool, sob
 		name:    name,
 		code:    code,
 		sha1sum: sha1sum,
+		startAt: time.Now(),
 	}
 
 	if !mana.replaceTask(task) {
@@ -121,6 +125,18 @@ func (mana *managers) Kill(name string, v any) error {
 	}
 
 	return tsk.kill(v)
+}
+
+func (mana *managers) Tasks() Tasks {
+	mana.mutex.RLock()
+	defer mana.mutex.RUnlock()
+
+	tasks := make(Tasks, 0, len(mana.tasks))
+	for _, tsk := range mana.tasks {
+		tasks = append(tasks, tsk)
+	}
+
+	return tasks
 }
 
 func (mana *managers) replaceTask(tsk *Task) bool {

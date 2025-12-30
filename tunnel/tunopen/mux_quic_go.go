@@ -65,7 +65,7 @@ func (q *quicGo) Protocol() (string, string) {
 	return "udp", "github.com/quic-go/quic-go"
 }
 
-func (q *quicGo) Transferred() (uint64, uint64) {
+func (q *quicGo) Traffic() (uint64, uint64) {
 	return q.traffic.load()
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json/v2"
 	"io"
+	"math"
 )
 
 func ReadAuth(r io.Reader, v any) error {
@@ -36,7 +37,7 @@ func WriteAuth(w io.Writer, v any) error {
 		return err
 	}
 	n := len(data)
-	if n > 65535 {
+	if n > math.MaxUint16 {
 		return io.ErrUnexpectedEOF
 	}
 

@@ -20,8 +20,8 @@ type Muxer interface {
 	//	- subprotocol: 子协议或具体的通信协议实现，一般用于开发者识别追溯，如：github.com/quic-go/quic-go
 	Protocol() (protocol, subprotocol string)
 
-	// Transferred 数据传输字节数。
-	Transferred() (rx, tx uint64)
+	// Traffic 数据传输字节数。
+	Traffic() (rx, tx uint64)
 }
 
 type trafficCounter struct {

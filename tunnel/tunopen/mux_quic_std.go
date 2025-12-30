@@ -79,7 +79,7 @@ func (q *quicStd) Protocol() (string, string) {
 	return "udp", "golang.org/x/net/quic"
 }
 
-func (q *quicStd) Transferred() (uint64, uint64) {
+func (q *quicStd) Traffic() (uint64, uint64) {
 	return q.traffic.load()
 }
 
