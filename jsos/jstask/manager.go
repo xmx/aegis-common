@@ -34,6 +34,8 @@ type Options struct {
 	Context context.Context
 }
 
+func (o Options) Options() Options { return o }
+
 type Optioner interface {
 	Options() Options
 }
