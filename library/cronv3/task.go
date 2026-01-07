@@ -23,12 +23,12 @@ type Tasker interface {
 }
 
 type TaskInfo struct {
-	ID        string        // 任务唯一标识，如果为空则会通过反射获取 FQDN 作为唯一标识，此时同一个 struct 不同实例 FQDN 是一样的。
-	Name      string        // Name 任务名，简要描述任务说明。
-	Immediate bool          // 添加到定时任务管理器时是否立即执行。
-	Timeout   time.Duration // 每次超时时间，小于等于零时代表无需设置。
-	CronSched cron.Schedule // 触发周期，等同于 CronSpec，但是优先级高于 CronSpec。
-	CronSpec  string        // 触发周期，等同于 CronSched，但是当 CronSched 为空时才会生效。
+	ID        string        `json:"id"`                  // 任务唯一标识，如果为空则会通过反射获取 FQDN 作为唯一标识，此时同一个 struct 不同实例 FQDN 是一样的。
+	Name      string        `json:"name"`                // Name 任务名，简要描述任务说明。
+	Immediate bool          `json:"immediate,omitzero"`  // 添加到定时任务管理器时是否立即执行。
+	Timeout   time.Duration `json:"timeout"`             // 每次超时时间，小于等于零时代表无需设置。
+	CronSched cron.Schedule `json:"cron_sched,omitzero"` // 触发周期，等同于 CronSpec，但是优先级高于 CronSpec。
+	CronSpec  string        `json:"cron_spec,omitzero"`  // 触发周期，等同于 CronSched，但是当 CronSched 为空时才会生效。
 }
 
 func qualifiedID(obj any) string {
