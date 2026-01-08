@@ -2,7 +2,7 @@ package tunopen
 
 import (
 	"encoding/binary"
-	"encoding/json/v2"
+	"encoding/json"
 	"io"
 	"math"
 )

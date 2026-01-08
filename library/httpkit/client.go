@@ -3,7 +3,7 @@ package httpkit
 import (
 	"bytes"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -162,7 +162,7 @@ func (c Client) send(req *http.Request) (*http.Response, error) {
 
 func (c Client) marshalJSON(v any) (io.Reader, error) {
 	buf := new(bytes.Buffer)
-	if err := json.MarshalWrite(buf, v); err != nil {
+	if err := json.NewEncoder(buf).Encode(v); err != nil {
 		return nil, err
 	}
 
@@ -187,5 +187,5 @@ func (c Client) unmarshalJSON(rc io.ReadCloser, result any) error {
 		return err
 	}
 
-	return json.UnmarshalRead(rc, result)
+	return json.NewDecoder(rc).Decode(result)
 }

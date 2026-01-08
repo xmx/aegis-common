@@ -1,8 +1,8 @@
 package profile
 
 import (
-	"encoding/json/jsontext"
-	"encoding/json/v2"
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 )
@@ -18,14 +18,13 @@ func WriteFile(name string, v any) error {
 		}
 	}
 
-	opts := []json.Options{
-		jsontext.EscapeForHTML(false),
-		jsontext.WithIndent("  "),
-	}
-	out, err := json.Marshal(v, opts...)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
 		return err
 	}
 
-	return os.WriteFile(name, out, 0o600)
+	return os.WriteFile(name, buf.Bytes(), 0o600)
 }

@@ -3,13 +3,12 @@ package stegano
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/json/jsontext"
-	"encoding/json/v2"
+	"encoding/json"
 	"io"
 	"io/fs"
 )
 
-const manifestName = "manifest.json"
+const ManifestName = "manifest.json"
 
 func AddFS(w io.Writer, fsys fs.FS, offset int64) error {
 	zw := zip.NewWriter(w)
@@ -28,15 +27,15 @@ func CreateManifestZip(manifest any, offset int64) (*bytes.Buffer, error) {
 	if offset > 0 {
 		zw.SetOffset(offset)
 	}
-	cw, err := zw.Create(manifestName)
+	cw, err := zw.Create(ManifestName)
 	if err != nil {
 		return nil, err
 	}
-	opt := jsontext.WithIndent("  ")
-	if err = json.MarshalWrite(cw, manifest, opt); err != nil {
-		return nil, err
-	}
-	if err = zw.Close(); err != nil {
+
+	enc := json.NewEncoder(cw)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err = enc.Encode(manifest); err != nil {
 		return nil, err
 	}
 
@@ -54,13 +53,13 @@ func ReadManifest(f string, v any) error {
 	}
 	defer zrc.Close()
 
-	mf, err := zrc.Open(manifestName)
+	mf, err := zrc.Open(ManifestName)
 	if err != nil {
 		return err
 	}
 	defer mf.Close()
 
-	return json.UnmarshalRead(mf, v)
+	return json.NewDecoder(mf).Decode(v)
 }
 
 type File[T any] string

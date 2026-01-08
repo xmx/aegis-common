@@ -1,7 +1,7 @@
 package profile
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -31,7 +31,7 @@ func (f File[T]) Read() (*T, error) {
 
 	t := new(T)
 	if ext == ".json" {
-		if err = json.UnmarshalRead(fr, t); err != nil {
+		if err = json.NewDecoder(fr).Decode(t); err != nil {
 			return nil, err
 		}
 

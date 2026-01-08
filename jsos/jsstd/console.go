@@ -3,8 +3,7 @@ package jsstd
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json/jsontext"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -116,8 +115,8 @@ func (*stdConsole) reflectParse(buf *bytes.Buffer, v any) error {
 	case reflect.Func:
 		buf.WriteString("<Function>")
 	default:
-		enc := jsontext.NewEncoder(buf)
-		if err := json.MarshalEncode(enc, v); err == nil {
+		enc := json.NewEncoder(buf)
+		if err := enc.Encode(v); err == nil {
 			return nil
 		}
 
