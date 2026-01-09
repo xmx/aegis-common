@@ -50,15 +50,23 @@ func (x *xQUICConn) SetDeadline(t time.Time) error {
 }
 
 func (x *xQUICConn) SetReadDeadline(t time.Time) error {
-	//goland:noinspection GoVetLostCancel
-	ctx, _ := context.WithDeadline(context.Background(), t)
+	ctx := context.Background()
+	if !t.IsZero() {
+		//goland:noinspection GoVetLostCancel
+		ctx, _ = context.WithDeadline(context.Background(), t)
+	}
 	x.stm.SetReadContext(ctx)
+
 	return nil
 }
 
 func (x *xQUICConn) SetWriteDeadline(t time.Time) error {
-	//goland:noinspection GoVetLostCancel
-	ctx, _ := context.WithDeadline(context.Background(), t)
-	x.stm.SetReadContext(ctx)
+	ctx := context.Background()
+	if !t.IsZero() {
+		//goland:noinspection GoVetLostCancel
+		ctx, _ = context.WithDeadline(context.Background(), t)
+	}
+	x.stm.SetWriteContext(ctx)
+
 	return nil
 }
