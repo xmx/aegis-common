@@ -80,7 +80,7 @@ func (dc *DialConfig) open(proto, addr string) (Muxer, error) {
 
 func (dc *DialConfig) openQUICx(addr string) (Muxer, error) {
 	cfg := dc.quicConfig()
-	endpoint, err := quic.Listen("udp", addr, cfg)
+	endpoint, err := quic.Listen("udp", "", cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +101,7 @@ func (dc *DialConfig) openQUICx(addr string) (Muxer, error) {
 func (dc *DialConfig) openQUICgo(addr string) (Muxer, error) {
 	tlsCfg := dc.QUICGoTLSConfig
 	if tlsCfg == nil {
-		tlsCfg = &tls.Config{
-			NextProtos:         []string{"aegis"},
-			InsecureSkipVerify: true,
-		}
+		tlsCfg = dc.quicTLS()
 	}
 	cfg := dc.QUICGoConfig
 	if cfg == nil {
@@ -165,10 +162,7 @@ func (dc *DialConfig) quicConfig() *quic.Config {
 	}
 
 	return &quic.Config{
-		TLSConfig: &tls.Config{
-			NextProtos:         []string{"aegis"},
-			InsecureSkipVerify: true,
-		},
+		TLSConfig:        dc.quicTLS(),
 		HandshakeTimeout: dc.PerTimeout,
 		KeepAlivePeriod:  10 * time.Second,
 		QLogLogger:       dc.Logger,
@@ -241,7 +235,7 @@ func (dc *DialConfig) format() DialConfig {
 			}
 		}
 		if len(used) == 0 {
-			used = append(used, "udp", "quic")
+			used = append(used, "quic", "quic-go", "tcp")
 		}
 		ret.Protocols = used
 	}
@@ -257,4 +251,12 @@ func (dc *DialConfig) format() DialConfig {
 	}
 
 	return ret
+}
+
+func (*DialConfig) quicTLS() *tls.Config {
+	return &tls.Config{
+		NextProtos:         []string{"aegis"},
+		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS13,
+	}
 }
