@@ -41,32 +41,30 @@ func (x *xQUICConn) RemoteAddr() net.Addr {
 }
 
 func (x *xQUICConn) SetDeadline(t time.Time) error {
-	err := x.SetReadDeadline(t)
-	if err == nil {
-		err = x.SetWriteDeadline(t)
-	}
+	_ = x.SetReadDeadline(t)
+	_ = x.SetWriteDeadline(t)
 
-	return err
+	return nil
 }
 
 func (x *xQUICConn) SetReadDeadline(t time.Time) error {
-	ctx := context.Background()
-	if !t.IsZero() {
-		//goland:noinspection GoVetLostCancel
-		ctx, _ = context.WithDeadline(context.Background(), t)
-	}
-	x.stm.SetReadContext(ctx)
+	x.stm.SetReadContext(x.withContext(t))
 
 	return nil
 }
 
 func (x *xQUICConn) SetWriteDeadline(t time.Time) error {
-	ctx := context.Background()
-	if !t.IsZero() {
-		//goland:noinspection GoVetLostCancel
-		ctx, _ = context.WithDeadline(context.Background(), t)
-	}
-	x.stm.SetWriteContext(ctx)
+	x.stm.SetWriteContext(x.withContext(t))
 
 	return nil
+}
+
+func (*xQUICConn) withContext(t time.Time) context.Context {
+	if t.IsZero() {
+		return context.Background()
+	}
+	//goland:noinspection GoVetLostCancel
+	ctx, _ := context.WithDeadline(context.Background(), t)
+
+	return ctx
 }
