@@ -46,15 +46,17 @@ func Open(cfg DialConfig) (Muxer, error) {
 	var errs []error
 	for _, addr := range cfg.Addresses {
 		for _, proto := range cfg.Protocols {
-			attrs := []any{"proto", proto, "addr", addr}
+			attrs := []any{"addr", addr}
 			cfg.log().Debug("开始连接...", attrs...)
 			mux, err := cfg.open(proto, addr)
 			if err != nil {
 				errs = append(errs, err)
-				attrs = append(attrs, "error", err)
+				attrs = append(attrs, "proto", proto, "error", err)
 				cfg.log().Warn("连接失败", attrs...)
 				continue
 			}
+			protocol, subprotocol := mux.Protocol()
+			attrs = append(attrs, "protocol", protocol, "subprotocol", subprotocol)
 			cfg.log().Info("连接成功", attrs...)
 
 			return mux, nil
