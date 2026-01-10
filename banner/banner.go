@@ -111,7 +111,7 @@ func parseTime(str string) time.Time {
 }
 
 func parseVersion(t time.Time) string {
-	return t.UTC().Format("06.1.2-150405")
+	return t.UTC().Format("06.1.2-t150405") // semver 不能 0 做前导
 }
 
 type Info struct {
