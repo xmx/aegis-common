@@ -1,4 +1,4 @@
-package httpkit
+package wsocket
 
 import (
 	"io"
@@ -13,7 +13,7 @@ type ExchangeStat struct {
 	BtoAError error `json:"btoa_error"`
 }
 
-func ExchangeWebsocket(a, b *websocket.Conn) ExchangeStat {
+func Exchange(a, b *websocket.Conn) ExchangeStat {
 	var stat ExchangeStat
 	wait := make(chan struct{})
 	go func() {
