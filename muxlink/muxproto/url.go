@@ -1,15 +1,13 @@
 package muxproto
 
-import (
-	"net/url"
-)
+import "net/url"
 
 const (
-	AgentHostSuffix       = ".agent.aegis.internal"
-	BrokerHost            = "broker.aegis.internal"
-	BrokerHostSuffix      = "." + BrokerHost
-	ServerHost            = "server.aegis.internal"
-	AgentBrokerHostSuffix = ".agent" + BrokerHostSuffix
+	AgentHostSuffix  = ".agent.aegis.internal"
+	BrokerHost       = "broker.aegis.internal"
+	BrokerHostSuffix = "." + BrokerHost
+	ServerHost       = "server.aegis.internal"
+	//AgentBrokerHostSuffix = ".agent" + BrokerHostSuffix
 )
 
 // ServerToBrokerURL server -> broker
@@ -26,9 +24,9 @@ func ToServerURL(path string, ws ...bool) *url.URL {
 	return buildURL(ServerHost, path, ws)
 }
 
-func ServerToAgentURL(agentID string, path string, ws ...bool) *url.URL {
-	return buildURL(agentID+AgentBrokerHostSuffix, path, ws)
-}
+//func ServerToAgentURL(agentID string, path string, ws ...bool) *url.URL {
+//	return buildURL(agentID+AgentHostSuffix, path, ws)
+//}
 
 // AgentToBrokerURL agent -> broker
 //
@@ -37,10 +35,10 @@ func AgentToBrokerURL(path string, ws ...bool) *url.URL {
 	return buildURL(BrokerHost, path, ws)
 }
 
-// BrokerToAgentURL broker -> agent
+// ToAgentURL broker -> agent
 //
 // <agentID>.agent.aegis.internal
-func BrokerToAgentURL(agentID string, pth string, ws ...bool) *url.URL {
+func ToAgentURL(agentID string, pth string, ws ...bool) *url.URL {
 	return buildURL(agentID+AgentHostSuffix, pth, ws)
 }
 
