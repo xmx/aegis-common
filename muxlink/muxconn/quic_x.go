@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"net/netip"
 	"time"
 
 	"golang.org/x/net/quic"
@@ -65,20 +64,11 @@ func (x *xQUIC) Open(ctx context.Context) (net.Conn, error) {
 	return x.newConn(stm), nil
 }
 
-func (x *xQUIC) Addr() net.Addr             { return x.toAddr(x.conn.LocalAddr()) }
-func (x *xQUIC) RemoteAddr() net.Addr       { return x.toAddr(x.conn.RemoteAddr()) }
+func (x *xQUIC) Addr() net.Addr             { return net.UDPAddrFromAddrPort(x.conn.LocalAddr()) }
+func (x *xQUIC) RemoteAddr() net.Addr       { return net.UDPAddrFromAddrPort(x.conn.RemoteAddr()) }
 func (x *xQUIC) Protocol() (string, string) { return "quic", "golang.org/x/net/quic" }
 func (x *xQUIC) Traffic() (uint64, uint64)  { return x.traffic.Load() }
 
 func (x *xQUIC) newConn(stm *quic.Stream) *xQUICConn {
 	return &xQUICConn{stm: stm, mst: x}
-}
-
-func (*xQUIC) toAddr(ip netip.AddrPort) *net.UDPAddr {
-	addr, port := ip.Addr(), ip.Port()
-	return &net.UDPAddr{
-		IP:   addr.AsSlice(),
-		Port: int(port),
-		Zone: addr.Zone(),
-	}
 }
