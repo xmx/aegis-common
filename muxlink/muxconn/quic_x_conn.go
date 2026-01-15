@@ -28,21 +28,14 @@ func (x *xQUICConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (x *xQUICConn) Close() error {
-	return x.stm.Close()
-}
-
-func (x *xQUICConn) LocalAddr() net.Addr {
-	return x.mst.Addr()
-}
-
-func (x *xQUICConn) RemoteAddr() net.Addr {
-	return x.mst.RemoteAddr()
-}
+func (x *xQUICConn) Close() error         { return x.stm.Close() }
+func (x *xQUICConn) LocalAddr() net.Addr  { return x.mst.Addr() }
+func (x *xQUICConn) RemoteAddr() net.Addr { return x.mst.RemoteAddr() }
 
 func (x *xQUICConn) SetDeadline(t time.Time) error {
-	_ = x.SetReadDeadline(t)
-	_ = x.SetWriteDeadline(t)
+	ctx := x.withContext(t)
+	x.stm.SetReadContext(ctx)
+	x.stm.SetWriteContext(ctx)
 
 	return nil
 }

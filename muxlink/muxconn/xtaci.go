@@ -32,30 +32,18 @@ type xtaciSMUX struct {
 	traffic *trafficStat
 }
 
-func (x *xtaciSMUX) Accept() (net.Conn, error) {
-	stm, err := x.sess.AcceptStream()
+func (x *xtaciSMUX) Accept() (net.Conn, error)              { return x.newConn(x.sess.AcceptStream()) }
+func (x *xtaciSMUX) Open(context.Context) (net.Conn, error) { return x.newConn(x.sess.OpenStream()) }
+func (x *xtaciSMUX) Close() error                           { return x.sess.Close() }
+func (x *xtaciSMUX) Addr() net.Addr                         { return x.sess.LocalAddr() }
+func (x *xtaciSMUX) RemoteAddr() net.Addr                   { return x.sess.RemoteAddr() }
+func (x *xtaciSMUX) Protocol() (string, string)             { return "tcp", "github.com/xtaci/smux" }
+func (x *xtaciSMUX) Traffic() (uint64, uint64)              { return x.traffic.Load() }
+
+func (x *xtaciSMUX) newConn(stm *smux.Stream, err error) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	return x.newConn(stm), nil
-}
-
-func (x *xtaciSMUX) Open(context.Context) (net.Conn, error) {
-	stm, err := x.sess.OpenStream()
-	if err != nil {
-		return nil, err
-	}
-
-	return x.newConn(stm), nil
-}
-
-func (x *xtaciSMUX) Close() error               { return x.sess.Close() }
-func (x *xtaciSMUX) Addr() net.Addr             { return x.sess.LocalAddr() }
-func (x *xtaciSMUX) RemoteAddr() net.Addr       { return x.sess.RemoteAddr() }
-func (x *xtaciSMUX) Protocol() (string, string) { return "tcp", "github.com/xtaci/smux" }
-func (x *xtaciSMUX) Traffic() (uint64, uint64)  { return x.traffic.Load() }
-
-func (x *xtaciSMUX) newConn(stm *smux.Stream) *xtaciConn {
-	return &xtaciConn{stm: stm, mst: x}
+	return &xtaciConn{stm: stm, mst: x}, nil
 }
