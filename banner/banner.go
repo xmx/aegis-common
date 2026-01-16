@@ -84,8 +84,8 @@ func parse() {
 	}
 
 	inf := ParseInfo(buildInfo)
-	if version == "" && inf.Version != "" {
-		version = "v" + inf.Version
+	if version == "" && inf.Semver != "" {
+		version = "v" + inf.Semver
 	}
 	goos = inf.Goos
 	arch = inf.Goarch
@@ -115,9 +115,9 @@ func parseVersion(t time.Time) string {
 }
 
 type Info struct {
-	Goos    string `json:"goos"`
-	Goarch  string `json:"goarch"`
-	Version string `json:"version"`
+	Goos   string `json:"goos"`
+	Goarch string `json:"goarch"`
+	Semver string `json:"semver"`
 }
 
 func ParseInfo(bi *buildinfo.BuildInfo) *Info {
@@ -131,11 +131,11 @@ func ParseInfo(bi *buildinfo.BuildInfo) *Info {
 			inf.Goarch = val
 		case "vcs.time":
 			if at, _ := time.ParseInLocation(time.RFC3339, val, time.UTC); !at.IsZero() {
-				inf.Version = parseVersion(at)
+				inf.Semver = parseVersion(at)
 			}
 		}
 	}
-	if inf.Version != "" {
+	if inf.Semver != "" {
 		return inf
 	}
 
@@ -144,7 +144,7 @@ func ParseInfo(bi *buildinfo.BuildInfo) *Info {
 	before, _, _ := strings.Cut(after, "-")
 	at, _ := time.ParseInLocation("20060102150405", before, time.UTC)
 	if !at.IsZero() {
-		inf.Version = parseVersion(at)
+		inf.Semver = parseVersion(at)
 	}
 
 	return inf
