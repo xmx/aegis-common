@@ -7,21 +7,17 @@ import (
 	"github.com/xtaci/smux"
 )
 
-func NewSMUX(raw net.Conn, cfg *smux.Config, serverSide bool) (Muxer, error) {
+func NewSMUX(conn net.Conn, cfg *smux.Config, serverSide bool) (Muxer, error) {
 	var err error
-	var sess *smux.Session
+	mux := &xtaciSMUX{traffic: new(trafficStat)}
+
 	if serverSide {
-		sess, err = smux.Server(raw, cfg)
+		mux.sess, err = smux.Server(conn, cfg)
 	} else {
-		sess, err = smux.Client(raw, cfg)
+		mux.sess, err = smux.Client(conn, cfg)
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	mux := &xtaciSMUX{
-		sess:    sess,
-		traffic: new(trafficStat),
 	}
 
 	return mux, nil
@@ -37,7 +33,7 @@ func (x *xtaciSMUX) Open(context.Context) (net.Conn, error) { return x.newConn(x
 func (x *xtaciSMUX) Close() error                           { return x.sess.Close() }
 func (x *xtaciSMUX) Addr() net.Addr                         { return x.sess.LocalAddr() }
 func (x *xtaciSMUX) RemoteAddr() net.Addr                   { return x.sess.RemoteAddr() }
-func (x *xtaciSMUX) Protocol() (string, string)             { return "tcp", "github.com/xtaci/smux" }
+func (x *xtaciSMUX) Library() (string, string)              { return "smux", "github.com/xtaci/smux" }
 func (x *xtaciSMUX) Traffic() (uint64, uint64)              { return x.traffic.Load() }
 
 func (x *xtaciSMUX) newConn(stm *smux.Stream, err error) (net.Conn, error) {

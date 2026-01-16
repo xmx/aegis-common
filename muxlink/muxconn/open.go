@@ -21,7 +21,8 @@ type DialConfig struct {
 	// 连接协议
 	// quic: golang.org/x/net/quic
 	// quic-go: github.com/quic-go/quic-go
-	// tcp: github.com/gorilla/websocket + github.com/xtaci/smux
+	// smux: github.com/gorilla/websocket + github.com/xtaci/smux
+	// yamux: github.com/gorilla/websocket + github.com/hashicorp/yamux
 	Protocols []string
 
 	PerTimeout time.Duration
@@ -55,8 +56,8 @@ func Open(cfg DialConfig) (Muxer, error) {
 				cfg.log().Warn("连接失败", attrs...)
 				continue
 			}
-			protocol, subprotocol := mux.Protocol()
-			attrs = append(attrs, "protocol", protocol, "subprotocol", subprotocol)
+			name, module := mux.Library()
+			attrs = append(attrs, "lib_name", name, "lib_module", module)
 			cfg.log().Info("连接成功", attrs...)
 
 			return mux, nil
@@ -71,8 +72,8 @@ func Open(cfg DialConfig) (Muxer, error) {
 
 func (dc *DialConfig) open(proto, addr string) (Muxer, error) {
 	switch proto {
-	case "tcp":
-		return dc.openTCP(addr)
+	case "smux", "yamux":
+		return dc.openTCP(addr, proto)
 	case "quic-go":
 		return dc.openQUICgo(addr)
 	default:
@@ -124,12 +125,14 @@ func (dc *DialConfig) openQUICgo(addr string) (Muxer, error) {
 	return mux, nil
 }
 
-func (dc *DialConfig) openTCP(addr string) (Muxer, error) {
+func (dc *DialConfig) openTCP(addr, proto string) (Muxer, error) {
 	reqURL := &url.URL{
 		Scheme: "wss",
 		Host:   addr,
 		Path:   dc.WebsocketPath,
 	}
+	queries := reqURL.Query()
+	queries.Set("protocol", proto)
 	strURL := reqURL.String()
 
 	ctx, cancel := dc.perContext()
@@ -141,7 +144,13 @@ func (dc *DialConfig) openTCP(addr string) (Muxer, error) {
 		return nil, err
 	}
 	conn := ws.NetConn()
-	mux, err := NewSMUX(conn, nil, false)
+
+	var mux Muxer
+	if proto == "smux" {
+		mux, err = NewSMUX(conn, nil, false)
+	} else {
+		mux, err = NewYaMUX(conn, nil, false)
+	}
 	if err != nil {
 		_ = ws.Close()
 		return nil, err
@@ -227,7 +236,7 @@ func (dc *DialConfig) format() DialConfig {
 		for _, proto := range dc.Protocols {
 			proto = strings.ToLower(proto)
 			switch proto {
-			case "quic", "quic-go", "tcp":
+			case "quic", "quic-go", "smux", "yamux":
 			default:
 				continue
 			}
@@ -237,7 +246,7 @@ func (dc *DialConfig) format() DialConfig {
 			}
 		}
 		if len(used) == 0 {
-			used = append(used, "quic", "quic-go", "tcp")
+			used = append(used, "quic", "quic-go", "smux", "yamux")
 		}
 		ret.Protocols = used
 	}

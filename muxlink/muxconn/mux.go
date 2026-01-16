@@ -15,10 +15,8 @@ type Muxer interface {
 	// RemoteAddr 远端节点地址。
 	RemoteAddr() net.Addr
 
-	// Protocol 返回通信协议类型。
-	//	- protocol: 标准的底层通信协议，如：tcp udp
-	//	- subprotocol: 子协议或具体的通信协议实现，一般用于开发者识别追溯，如：github.com/quic-go/quic-go
-	Protocol() (protocol, subprotocol string)
+	// Library 。
+	Library() (name, module string)
 
 	// Traffic 数据传输字节数。
 	Traffic() (rx, tx uint64)

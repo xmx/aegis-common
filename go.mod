@@ -10,6 +10,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/grafana/sobek v0.0.0-20251209155516-22d1085c20a8
+	github.com/hashicorp/yamux v0.1.2
 	github.com/lmittmann/tint v1.1.2
 	github.com/quic-go/quic-go v0.59.0
 	github.com/robfig/cron/v3 v3.0.1

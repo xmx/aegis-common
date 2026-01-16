@@ -28,7 +28,7 @@ func (q *goQUIC) Open(context.Context) (net.Conn, error) { return q.newConn(q.co
 func (q *goQUIC) Close() error                           { return q.conn.CloseWithError(0, "") }
 func (q *goQUIC) Addr() net.Addr                         { return q.conn.LocalAddr() }
 func (q *goQUIC) RemoteAddr() net.Addr                   { return q.conn.RemoteAddr() }
-func (q *goQUIC) Protocol() (string, string)             { return "quic", "github.com/quic-go/quic-go" }
+func (q *goQUIC) Library() (string, string)              { return "quic", "github.com/quic-go/quic-go" }
 
 func (q *goQUIC) Traffic() (uint64, uint64) {
 	stat := q.conn.ConnectionStats()

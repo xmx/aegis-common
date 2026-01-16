@@ -50,7 +50,7 @@ func (x *xQUIC) Accept() (net.Conn, error)                  { return x.newConn(x
 func (x *xQUIC) Open(ctx context.Context) (net.Conn, error) { return x.newConn(x.conn.NewStream(ctx)) }
 func (x *xQUIC) Addr() net.Addr                             { return net.UDPAddrFromAddrPort(x.conn.LocalAddr()) }
 func (x *xQUIC) RemoteAddr() net.Addr                       { return net.UDPAddrFromAddrPort(x.conn.RemoteAddr()) }
-func (x *xQUIC) Protocol() (string, string)                 { return "quic", "golang.org/x/net/quic" }
+func (x *xQUIC) Library() (string, string)                  { return "quic", "golang.org/x/net/quic" }
 func (x *xQUIC) Traffic() (uint64, uint64)                  { return x.traffic.Load() }
 
 func (x *xQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
