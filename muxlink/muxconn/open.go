@@ -133,6 +133,7 @@ func (dc *DialConfig) openTCP(addr, proto string) (Muxer, error) {
 	}
 	queries := reqURL.Query()
 	queries.Set("protocol", proto)
+	reqURL.RawQuery = queries.Encode()
 	strURL := reqURL.String()
 
 	ctx, cancel := dc.perContext()
