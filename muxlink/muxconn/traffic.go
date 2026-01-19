@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"sync/atomic"
 	"time"
@@ -31,6 +32,11 @@ func (ts *trafficStat) incrTX(n int) {
 	}
 }
 
+const (
+	minimumBurst     = 2 << 14
+	defaultLimitWait = 10 * time.Second
+)
+
 func newUnlimit() *rateLimiter {
 	return &rateLimiter{
 		rlimit: rate.NewLimiter(rate.Inf, minimumBurst),
@@ -55,7 +61,8 @@ func (rl *rateLimiter) SetLimit(bps rate.Limit) {
 	rl.wlimit.SetLimitAt(now, bps)
 
 	if bps != rate.Inf {
-		burst := int(bps * 1.2)
+		burst := int(math.Ceil(float64(bps) * 1.2))
+		burst = max(burst, minimumBurst)
 		rl.rlimit.SetBurstAt(now, burst)
 		rl.wlimit.SetBurstAt(now, burst)
 	}

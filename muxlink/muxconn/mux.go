@@ -3,14 +3,8 @@ package muxconn
 import (
 	"context"
 	"net"
-	"time"
 
 	"golang.org/x/time/rate"
-)
-
-const (
-	minimumBurst     = 2 << 14
-	defaultLimitWait = 10 * time.Second
 )
 
 type Muxer interface {
