@@ -2,6 +2,7 @@ package muxconn
 
 import (
 	"context"
+	"io"
 	"net"
 	"time"
 
@@ -11,17 +12,18 @@ import (
 type xQUICConn struct {
 	stm *quic.Stream
 	mst *xQUIC
+	lrw io.ReadWriter
 }
 
 func (x *xQUICConn) Read(b []byte) (int, error) {
-	n, err := x.stm.Read(b)
+	n, err := x.lrw.Read(b)
 	x.mst.traffic.incrRX(n)
 
 	return n, err
 }
 
 func (x *xQUICConn) Write(b []byte) (int, error) {
-	n, err := x.stm.Write(b)
+	n, err := x.lrw.Write(b)
 	_ = x.stm.Flush()
 	x.mst.traffic.incrTX(n)
 

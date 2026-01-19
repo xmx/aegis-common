@@ -1,6 +1,7 @@
 package muxconn
 
 import (
+	"io"
 	"net"
 	"time"
 
@@ -10,17 +11,18 @@ import (
 type xtaciConn struct {
 	stm *smux.Stream
 	mst *xtaciSMUX
+	lrw io.ReadWriter
 }
 
 func (x *xtaciConn) Read(b []byte) (int, error) {
-	n, err := x.stm.Read(b)
+	n, err := x.lrw.Read(b)
 	x.mst.traffic.incrRX(n)
 
 	return n, err
 }
 
 func (x *xtaciConn) Write(b []byte) (int, error) {
-	n, err := x.stm.Write(b)
+	n, err := x.lrw.Write(b)
 	x.mst.traffic.incrTX(n)
 
 	return n, err

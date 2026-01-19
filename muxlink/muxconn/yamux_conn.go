@@ -1,6 +1,7 @@
 package muxconn
 
 import (
+	"io"
 	"net"
 	"time"
 
@@ -10,17 +11,18 @@ import (
 type yamuxConn struct {
 	stm *yamux.Stream
 	mst *yamuxMUX
+	lrw io.ReadWriter
 }
 
 func (c *yamuxConn) Read(b []byte) (int, error) {
-	n, err := c.stm.Read(b)
+	n, err := c.lrw.Read(b)
 	c.mst.traffic.incrRX(n)
 
 	return n, err
 }
 
 func (c *yamuxConn) Write(b []byte) (int, error) {
-	n, err := c.stm.Write(b)
+	n, err := c.lrw.Write(b)
 	c.mst.traffic.incrTX(n)
 
 	return n, err

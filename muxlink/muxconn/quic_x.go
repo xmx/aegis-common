@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"golang.org/x/net/quic"
+	"golang.org/x/time/rate"
 )
 
 // NewQUICx 标准库的 quic。
@@ -22,6 +23,7 @@ func NewQUICx(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn) 
 		endpoint: endpoint,
 		conn:     conn,
 		traffic:  new(trafficStat),
+		limiter:  newUnlimit(),
 	}
 }
 
@@ -30,6 +32,7 @@ type xQUIC struct {
 	endpoint *quic.Endpoint
 	conn     *quic.Conn
 	traffic  *trafficStat
+	limiter  *rateLimiter // 读写限流器
 }
 
 func (x *xQUIC) Close() error {
@@ -52,11 +55,22 @@ func (x *xQUIC) Addr() net.Addr                             { return net.UDPAddr
 func (x *xQUIC) RemoteAddr() net.Addr                       { return net.UDPAddrFromAddrPort(x.conn.RemoteAddr()) }
 func (x *xQUIC) Library() (string, string)                  { return "quic", "golang.org/x/net/quic" }
 func (x *xQUIC) Traffic() (uint64, uint64)                  { return x.traffic.Load() }
+func (x *xQUIC) Limit() rate.Limit                          { return x.limiter.Limit() }
+func (x *xQUIC) SetLimit(bps rate.Limit)                    { x.limiter.SetLimit(bps) }
 
 func (x *xQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	return &xQUICConn{stm: stm, mst: x}, nil
+	parent := context.Background()
+	lrw := x.limiter.newReadWriter(parent, stm)
+
+	conn := &xQUICConn{
+		stm: stm,
+		mst: x,
+		lrw: lrw,
+	}
+
+	return conn, nil
 }

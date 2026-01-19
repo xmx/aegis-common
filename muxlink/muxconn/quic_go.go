@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/quic-go/quic-go"
+	"golang.org/x/time/rate"
 )
 
 func NewQUICgo(parent context.Context, conn *quic.Conn) Muxer {
@@ -13,14 +14,16 @@ func NewQUICgo(parent context.Context, conn *quic.Conn) Muxer {
 	}
 
 	return &goQUIC{
-		conn:   conn,
-		parent: parent,
+		conn:    conn,
+		limiter: newUnlimit(),
+		parent:  parent,
 	}
 }
 
 type goQUIC struct {
-	conn   *quic.Conn
-	parent context.Context
+	conn    *quic.Conn
+	limiter *rateLimiter
+	parent  context.Context
 }
 
 func (q *goQUIC) Accept() (net.Conn, error)              { return q.newConn(q.conn.AcceptStream(q.parent)) }
@@ -29,6 +32,8 @@ func (q *goQUIC) Close() error                           { return q.conn.CloseWi
 func (q *goQUIC) Addr() net.Addr                         { return q.conn.LocalAddr() }
 func (q *goQUIC) RemoteAddr() net.Addr                   { return q.conn.RemoteAddr() }
 func (q *goQUIC) Library() (string, string)              { return "quic", "github.com/quic-go/quic-go" }
+func (q *goQUIC) Limit() rate.Limit                      { return q.limiter.Limit() }
+func (q *goQUIC) SetLimit(bps rate.Limit)                { q.limiter.SetLimit(bps) }
 
 func (q *goQUIC) Traffic() (uint64, uint64) {
 	stat := q.conn.ConnectionStats()
@@ -40,5 +45,12 @@ func (q *goQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 		return nil, err
 	}
 
-	return &goQUICConn{stm: stm, mst: q}, nil
+	lrw := q.limiter.newReadWriter(q.parent, stm)
+	conn := &goQUICConn{
+		stm: stm,
+		mst: q,
+		lrw: lrw,
+	}
+
+	return conn, nil
 }

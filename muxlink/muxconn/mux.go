@@ -3,7 +3,14 @@ package muxconn
 import (
 	"context"
 	"net"
-	"sync/atomic"
+	"time"
+
+	"golang.org/x/time/rate"
+)
+
+const (
+	minimumBurst     = 2 << 14
+	defaultLimitWait = 10 * time.Second
 )
 
 type Muxer interface {
@@ -20,24 +27,9 @@ type Muxer interface {
 
 	// Traffic 数据传输字节数。
 	Traffic() (rx, tx uint64)
-}
 
-type trafficStat struct {
-	rx, tx atomic.Uint64
-}
+	// Limit 限速。
+	Limit() rate.Limit
 
-func (ts *trafficStat) Load() (rx, tx uint64) {
-	return ts.rx.Load(), ts.tx.Load()
-}
-
-func (ts *trafficStat) incrRX(n int) {
-	if n > 0 {
-		ts.rx.Add(uint64(n))
-	}
-}
-
-func (ts *trafficStat) incrTX(n int) {
-	if n > 0 {
-		ts.tx.Add(uint64(n))
-	}
+	SetLimit(bps rate.Limit)
 }

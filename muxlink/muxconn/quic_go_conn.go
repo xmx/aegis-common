@@ -1,6 +1,7 @@
 package muxconn
 
 import (
+	"io"
 	"net"
 	"time"
 
@@ -10,10 +11,11 @@ import (
 type goQUICConn struct {
 	stm *quic.Stream
 	mst *goQUIC
+	lrw io.ReadWriter
 }
 
-func (c *goQUICConn) Read(b []byte) (int, error)         { return c.stm.Read(b) }
-func (c *goQUICConn) Write(b []byte) (int, error)        { return c.stm.Write(b) }
+func (c *goQUICConn) Read(b []byte) (int, error)         { return c.lrw.Read(b) }
+func (c *goQUICConn) Write(b []byte) (int, error)        { return c.lrw.Write(b) }
 func (c *goQUICConn) Close() error                       { return c.stm.Close() }
 func (c *goQUICConn) LocalAddr() net.Addr                { return c.mst.Addr() }
 func (c *goQUICConn) RemoteAddr() net.Addr               { return c.mst.RemoteAddr() }
