@@ -1,17 +1,21 @@
 package muxconn
 
 import (
+	"context"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/yamux"
 )
 
 type yamuxConn struct {
-	stm *yamux.Stream
-	mst *yamuxMUX
-	lrw io.ReadWriter
+	stm    *yamux.Stream
+	mst    *yamuxMUX
+	lrw    io.ReadWriter
+	closed atomic.Bool
+	cancel context.CancelCauseFunc
 }
 
 func (c *yamuxConn) Read(b []byte) (int, error) {
@@ -28,7 +32,18 @@ func (c *yamuxConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (c *yamuxConn) Close() error                       { return c.stm.Close() }
+func (c *yamuxConn) Close() error {
+	if !c.closed.CompareAndSwap(false, true) {
+		return net.ErrClosed
+	}
+
+	err := c.stm.Close()
+	c.cancel(net.ErrClosed)
+	c.mst.streams.closeOne()
+
+	return err
+}
+
 func (c *yamuxConn) LocalAddr() net.Addr                { return c.stm.LocalAddr() }
 func (c *yamuxConn) RemoteAddr() net.Addr               { return c.stm.RemoteAddr() }
 func (c *yamuxConn) SetDeadline(t time.Time) error      { return c.stm.SetDeadline(t) }

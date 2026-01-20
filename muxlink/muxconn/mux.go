@@ -26,4 +26,6 @@ type Muxer interface {
 	Limit() rate.Limit
 
 	SetLimit(bps rate.Limit)
+
+	NumStreams() (history, active int64)
 }

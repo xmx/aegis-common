@@ -24,6 +24,7 @@ func NewQUICx(parent context.Context, endpoint *quic.Endpoint, conn *quic.Conn) 
 		conn:     conn,
 		traffic:  new(trafficStat),
 		limiter:  newUnlimit(),
+		streams:  new(streamStat),
 	}
 }
 
@@ -33,6 +34,7 @@ type xQUIC struct {
 	conn     *quic.Conn
 	traffic  *trafficStat
 	limiter  *rateLimiter // 读写限流器
+	streams  *streamStat  // stream 计数器
 }
 
 func (x *xQUIC) Close() error {
@@ -57,19 +59,23 @@ func (x *xQUIC) Library() (string, string)                  { return "quic", "go
 func (x *xQUIC) Traffic() (uint64, uint64)                  { return x.traffic.Load() }
 func (x *xQUIC) Limit() rate.Limit                          { return x.limiter.Limit() }
 func (x *xQUIC) SetLimit(bps rate.Limit)                    { x.limiter.SetLimit(bps) }
+func (x *xQUIC) NumStreams() (int64, int64)                 { return x.streams.NumStreams() }
 
 func (x *xQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	parent := context.Background()
-	lrw := x.limiter.newReadWriter(parent, stm)
+	parent := x.parent
+	ctx, cancel := context.WithCancelCause(parent)
+	lrw := x.limiter.newReadWriter(ctx, stm)
+	x.streams.openOne()
 
 	conn := &xQUICConn{
-		stm: stm,
-		mst: x,
-		lrw: lrw,
+		stm:    stm,
+		mst:    x,
+		lrw:    lrw,
+		cancel: cancel,
 	}
 
 	return conn, nil

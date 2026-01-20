@@ -6,35 +6,24 @@ import (
 	"io"
 	"math"
 	"os"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
 )
 
-type trafficStat struct {
-	rx, tx atomic.Uint64
-}
-
-func (ts *trafficStat) Load() (rx, tx uint64) {
-	return ts.rx.Load(), ts.tx.Load()
-}
-
-func (ts *trafficStat) incrRX(n int) {
-	if n > 0 {
-		ts.rx.Add(uint64(n))
-	}
-}
-
-func (ts *trafficStat) incrTX(n int) {
-	if n > 0 {
-		ts.tx.Add(uint64(n))
-	}
-}
-
 const (
-	minimumBurst     = 2 << 14
 	defaultLimitWait = 10 * time.Second
+
+	// 每个 Muxer 可以产生 N 个 stream，这些 stream 共享同一个限流器，
+	// maximumChunk 为了每个 stream 每次读/写申请最大的 token 数，为了
+	// 避免多 stream 竞争同一个限流器，特此对 minimumBurst 做基础限制，
+	// minimumBurst = maximumChunk * 10，这个 10 倍只是经验值。
+	//
+	// 为什么 maximumChunk = 32K？
+	// 因为 io.Copy 默认 32K，这个值小一点也可以，但是可能会让每次写入
+	// 的 syscall 变得频繁，该值也是经验值。
+	maximumChunk = 2 << 14
+	minimumBurst = maximumChunk * 10
 )
 
 func newUnlimit() *rateLimiter {
@@ -93,7 +82,7 @@ func (lrw *limitReadWriter) Read(p []byte) (int, error) {
 		return lrw.under.Read(p)
 	}
 
-	tokens := min(len(p), minimumBurst)
+	tokens := min(len(p), maximumChunk)
 	if err := lrw.waitN(lrw.rlimit, tokens); err != nil {
 		return 0, err
 	}
@@ -110,7 +99,7 @@ func (lrw *limitReadWriter) Write(p []byte) (int, error) {
 	remain := total
 	var written int
 	for remain > 0 {
-		tokens := min(remain, minimumBurst)
+		tokens := min(remain, maximumChunk)
 		if err := lrw.waitN(lrw.wlimit, tokens); err != nil {
 			return written, err
 		}

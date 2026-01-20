@@ -4,15 +4,18 @@ import (
 	"context"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/quic"
 )
 
 type xQUICConn struct {
-	stm *quic.Stream
-	mst *xQUIC
-	lrw io.ReadWriter
+	stm    *quic.Stream
+	mst    *xQUIC
+	lrw    io.ReadWriter
+	closed atomic.Bool
+	cancel context.CancelCauseFunc
 }
 
 func (x *xQUICConn) Read(b []byte) (int, error) {
@@ -30,7 +33,18 @@ func (x *xQUICConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (x *xQUICConn) Close() error         { return x.stm.Close() }
+func (x *xQUICConn) Close() error {
+	if !x.closed.CompareAndSwap(false, true) {
+		return net.ErrClosed
+	}
+
+	err := x.stm.Close()
+	x.cancel(net.ErrClosed)
+	x.mst.streams.closeOne()
+
+	return err
+}
+
 func (x *xQUICConn) LocalAddr() net.Addr  { return x.mst.Addr() }
 func (x *xQUICConn) RemoteAddr() net.Addr { return x.mst.RemoteAddr() }
 

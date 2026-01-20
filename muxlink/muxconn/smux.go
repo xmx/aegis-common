@@ -13,6 +13,7 @@ func NewSMUX(conn net.Conn, cfg *smux.Config, serverSide bool) (Muxer, error) {
 	mux := &xtaciSMUX{
 		traffic: new(trafficStat),
 		limiter: newUnlimit(),
+		streams: new(streamStat),
 	}
 
 	if serverSide {
@@ -31,6 +32,7 @@ type xtaciSMUX struct {
 	sess    *smux.Session
 	traffic *trafficStat
 	limiter *rateLimiter // 读写限流器
+	streams *streamStat
 }
 
 func (x *xtaciSMUX) Accept() (net.Conn, error)              { return x.newConn(x.sess.AcceptStream()) }
@@ -42,19 +44,22 @@ func (x *xtaciSMUX) Library() (string, string)              { return "smux", "gi
 func (x *xtaciSMUX) Traffic() (uint64, uint64)              { return x.traffic.Load() }
 func (x *xtaciSMUX) Limit() rate.Limit                      { return x.limiter.Limit() }
 func (x *xtaciSMUX) SetLimit(bps rate.Limit)                { x.limiter.SetLimit(bps) }
+func (x *xtaciSMUX) NumStreams() (int64, int64)             { return x.streams.NumStreams() }
 
 func (x *xtaciSMUX) newConn(stm *smux.Stream, err error) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	parent := context.Background()
-	lrw := x.limiter.newReadWriter(parent, stm)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	lrw := x.limiter.newReadWriter(ctx, stm)
+	x.streams.openOne()
 
 	conn := &xtaciConn{
-		stm: stm,
-		mst: x,
-		lrw: lrw,
+		stm:    stm,
+		mst:    x,
+		lrw:    lrw,
+		cancel: cancel,
 	}
 
 	return conn, nil
