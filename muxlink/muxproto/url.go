@@ -3,6 +3,7 @@ package muxproto
 import "net/url"
 
 const (
+	AgentHost        = "agent.aegis.internal"
 	AgentHostSuffix  = ".agent.aegis.internal"
 	BrokerHost       = "broker.aegis.internal"
 	BrokerHostSuffix = "." + BrokerHost

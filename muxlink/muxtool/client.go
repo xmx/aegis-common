@@ -19,11 +19,11 @@ type Client struct {
 	log *slog.Logger
 }
 
-func NewClient(dia muxproto.Dialer, log *slog.Logger) *Client {
+func NewClient(dia muxproto.Dialer, log *slog.Logger) Client {
 	tran := newHTTPTransport(dia, log)
 	cli := &http.Client{Transport: tran}
 
-	return &Client{
+	return Client{
 		dia: dia,
 		cli: cli,
 		log: log,

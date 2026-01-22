@@ -26,7 +26,7 @@ type httpTransport struct {
 }
 
 func (ht *httpTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	ht.log.Debug("rpc client 网络层请求成功", "method", r.Method, "url", r.URL)
+	ht.log.Debug("mux http client 正在发送请求", "method", r.Method, "url", r.URL)
 
 	return ht.tran.RoundTrip(r)
 }
