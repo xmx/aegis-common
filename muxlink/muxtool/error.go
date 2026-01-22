@@ -1,4 +1,4 @@
-package muxproto
+package muxtool
 
 import (
 	"net/http"

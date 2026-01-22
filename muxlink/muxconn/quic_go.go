@@ -36,7 +36,7 @@ func (q *goQUIC) RemoteAddr() net.Addr                   { return q.conn.RemoteA
 func (q *goQUIC) Library() (string, string)              { return "quic", "github.com/quic-go/quic-go" }
 func (q *goQUIC) Limit() rate.Limit                      { return q.limiter.Limit() }
 func (q *goQUIC) SetLimit(bps rate.Limit)                { q.limiter.SetLimit(bps) }
-func (q *goQUIC) NumStreams() (int64, int64)             { return q.streams.NumStreams() }
+func (q *goQUIC) NumStreams() (int64, int64)             { return q.streams.Load() }
 
 func (q *goQUIC) Traffic() (uint64, uint64) {
 	stat := q.conn.ConnectionStats()
@@ -49,13 +49,13 @@ func (q *goQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 	}
 
 	ctx, cancel := context.WithCancelCause(q.parent)
-	lrw := q.limiter.newReadWriter(ctx, stm)
-	q.streams.openOne()
+	limit := q.limiter.newReadWriter(ctx, stm)
+	q.streams.incr()
 
 	conn := &goQUICConn{
-		stm:    stm,
-		mst:    q,
-		lrw:    lrw,
+		master: q,
+		stream: stm,
+		limit:  limit,
 		cancel: cancel,
 	}
 

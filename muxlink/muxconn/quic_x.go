@@ -59,7 +59,7 @@ func (x *xQUIC) Library() (string, string)                  { return "quic", "go
 func (x *xQUIC) Traffic() (uint64, uint64)                  { return x.traffic.Load() }
 func (x *xQUIC) Limit() rate.Limit                          { return x.limiter.Limit() }
 func (x *xQUIC) SetLimit(bps rate.Limit)                    { x.limiter.SetLimit(bps) }
-func (x *xQUIC) NumStreams() (int64, int64)                 { return x.streams.NumStreams() }
+func (x *xQUIC) NumStreams() (int64, int64)                 { return x.streams.Load() }
 
 func (x *xQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 	if err != nil {
@@ -68,13 +68,13 @@ func (x *xQUIC) newConn(stm *quic.Stream, err error) (net.Conn, error) {
 
 	parent := x.parent
 	ctx, cancel := context.WithCancelCause(parent)
-	lrw := x.limiter.newReadWriter(ctx, stm)
-	x.streams.openOne()
+	limit := x.limiter.newReadWriter(ctx, stm)
+	x.streams.incr()
 
 	conn := &xQUICConn{
-		stm:    stm,
-		mst:    x,
-		lrw:    lrw,
+		master: x,
+		stream: stm,
+		limit:  limit,
 		cancel: cancel,
 	}
 

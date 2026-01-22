@@ -1,4 +1,4 @@
-package muxproto
+package muxtool
 
 import (
 	"bytes"
@@ -9,15 +9,17 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/xmx/aegis-common/muxlink/muxproto"
 )
 
 type Client struct {
-	dia Dialer
+	dia muxproto.Dialer
 	cli *http.Client
 	log *slog.Logger
 }
 
-func NewClient(dia Dialer, log *slog.Logger) *Client {
+func NewClient(dia muxproto.Dialer, log *slog.Logger) *Client {
 	tran := newHTTPTransport(dia, log)
 	cli := &http.Client{Transport: tran}
 

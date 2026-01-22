@@ -11,24 +11,24 @@ import (
 )
 
 type xQUICConn struct {
-	stm    *quic.Stream
-	mst    *xQUIC
-	lrw    io.ReadWriter
+	master *xQUIC
+	stream *quic.Stream
+	limit  io.ReadWriter
 	closed atomic.Bool
 	cancel context.CancelCauseFunc
 }
 
 func (x *xQUICConn) Read(b []byte) (int, error) {
-	n, err := x.lrw.Read(b)
-	x.mst.traffic.incrRX(n)
+	n, err := x.limit.Read(b)
+	x.master.traffic.incrRX(n)
 
 	return n, err
 }
 
 func (x *xQUICConn) Write(b []byte) (int, error) {
-	n, err := x.lrw.Write(b)
-	_ = x.stm.Flush()
-	x.mst.traffic.incrTX(n)
+	n, err := x.limit.Write(b)
+	_ = x.stream.Flush()
+	x.master.traffic.incrTX(n)
 
 	return n, err
 }
@@ -38,32 +38,32 @@ func (x *xQUICConn) Close() error {
 		return net.ErrClosed
 	}
 
-	err := x.stm.Close()
+	x.master.streams.decr()
+	err := x.stream.Close()
 	x.cancel(net.ErrClosed)
-	x.mst.streams.closeOne()
 
 	return err
 }
 
-func (x *xQUICConn) LocalAddr() net.Addr  { return x.mst.Addr() }
-func (x *xQUICConn) RemoteAddr() net.Addr { return x.mst.RemoteAddr() }
+func (x *xQUICConn) LocalAddr() net.Addr  { return x.master.Addr() }
+func (x *xQUICConn) RemoteAddr() net.Addr { return x.master.RemoteAddr() }
 
 func (x *xQUICConn) SetDeadline(t time.Time) error {
 	ctx := x.withContext(t)
-	x.stm.SetReadContext(ctx)
-	x.stm.SetWriteContext(ctx)
+	x.stream.SetReadContext(ctx)
+	x.stream.SetWriteContext(ctx)
 
 	return nil
 }
 
 func (x *xQUICConn) SetReadDeadline(t time.Time) error {
-	x.stm.SetReadContext(x.withContext(t))
+	x.stream.SetReadContext(x.withContext(t))
 
 	return nil
 }
 
 func (x *xQUICConn) SetWriteDeadline(t time.Time) error {
-	x.stm.SetWriteContext(x.withContext(t))
+	x.stream.SetWriteContext(x.withContext(t))
 
 	return nil
 }

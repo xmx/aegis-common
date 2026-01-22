@@ -10,42 +10,42 @@ import (
 	"github.com/xtaci/smux"
 )
 
-type xtaciConn struct {
-	stm    *smux.Stream
-	mst    *xtaciSMUX
-	lrw    io.ReadWriter
+type smuxConn struct {
+	parent *smuxSession
+	stream *smux.Stream
+	limit  io.ReadWriter
 	closed atomic.Bool
 	cancel context.CancelCauseFunc
 }
 
-func (x *xtaciConn) Read(b []byte) (int, error) {
-	n, err := x.lrw.Read(b)
-	x.mst.traffic.incrRX(n)
+func (c *smuxConn) Read(b []byte) (int, error) {
+	n, err := c.limit.Read(b)
+	c.parent.traffic.incrRX(n)
 
 	return n, err
 }
 
-func (x *xtaciConn) Write(b []byte) (int, error) {
-	n, err := x.lrw.Write(b)
-	x.mst.traffic.incrTX(n)
+func (c *smuxConn) Write(b []byte) (int, error) {
+	n, err := c.limit.Write(b)
+	c.parent.traffic.incrTX(n)
 
 	return n, err
 }
 
-func (x *xtaciConn) Close() error {
-	if !x.closed.CompareAndSwap(false, true) {
+func (c *smuxConn) Close() error {
+	if !c.closed.CompareAndSwap(false, true) {
 		return net.ErrClosed
 	}
 
-	err := x.stm.Close()
-	x.cancel(net.ErrClosed)
-	x.mst.streams.closeOne()
+	c.parent.streams.decr()
+	err := c.stream.Close()
+	c.cancel(net.ErrClosed)
 
 	return err
 }
 
-func (x *xtaciConn) LocalAddr() net.Addr                { return x.mst.Addr() }
-func (x *xtaciConn) RemoteAddr() net.Addr               { return x.mst.RemoteAddr() }
-func (x *xtaciConn) SetDeadline(t time.Time) error      { return x.stm.SetDeadline(t) }
-func (x *xtaciConn) SetReadDeadline(t time.Time) error  { return x.stm.SetReadDeadline(t) }
-func (x *xtaciConn) SetWriteDeadline(t time.Time) error { return x.stm.SetWriteDeadline(t) }
+func (c *smuxConn) LocalAddr() net.Addr                { return c.stream.LocalAddr() }
+func (c *smuxConn) RemoteAddr() net.Addr               { return c.stream.RemoteAddr() }
+func (c *smuxConn) SetDeadline(t time.Time) error      { return c.stream.SetDeadline(t) }
+func (c *smuxConn) SetReadDeadline(t time.Time) error  { return c.stream.SetReadDeadline(t) }
+func (c *smuxConn) SetWriteDeadline(t time.Time) error { return c.stream.SetWriteDeadline(t) }

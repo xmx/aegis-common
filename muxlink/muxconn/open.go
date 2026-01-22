@@ -147,10 +147,11 @@ func (dc *DialConfig) openTCP(addr, proto string) (Muxer, error) {
 	conn := ws.NetConn()
 
 	var mux Muxer
+	parent := context.Background()
 	if proto == "smux" {
-		mux, err = NewSMUX(conn, nil, false)
+		mux, err = NewSMUX(parent, conn, nil, false)
 	} else {
-		mux, err = NewYaMUX(conn, nil, false)
+		mux, err = NewYaMUX(parent, conn, nil, false)
 	}
 	if err != nil {
 		_ = ws.Close()

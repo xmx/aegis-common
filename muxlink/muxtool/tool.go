@@ -1,9 +1,9 @@
-package muxproto
+package muxtool
 
 import (
 	"io"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -26,29 +26,29 @@ func Outbound(laddr, raddr net.Addr) net.IP {
 	return net.IPv4zero
 }
 
-func NewFlagClose(c io.Closer) *FlagClose {
-	return &FlagClose{c: c}
+type FlagCloser interface {
+	// Close 关闭。
+	Close()
+
+	// Closed 是否已经关闭。
+	Closed() bool
 }
 
-type FlagClose struct {
-	m sync.Mutex
+func NewFlagCloser(c io.Closer) FlagCloser {
+	return &flagCloser{c: c}
+}
+
+type flagCloser struct {
+	f atomic.Bool
 	c io.Closer
-	f bool
 }
 
-func (mc *FlagClose) Close() {
-	mc.m.Lock()
-	defer mc.m.Unlock()
-
-	if !mc.f {
-		_ = mc.c.Close()
-		mc.f = true
+func (f *flagCloser) Close() {
+	if f.f.CompareAndSwap(false, true) {
+		_ = f.c.Close()
 	}
 }
 
-func (mc *FlagClose) Closed() bool {
-	mc.m.Lock()
-	defer mc.m.Unlock()
-
-	return mc.f
+func (f *flagCloser) Closed() bool {
+	return f.f.Load()
 }

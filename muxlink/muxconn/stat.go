@@ -6,36 +6,35 @@ type trafficStat struct {
 	rx, tx atomic.Uint64
 }
 
-func (ts *trafficStat) Load() (rx, tx uint64) {
-	return ts.rx.Load(), ts.tx.Load()
+func (s *trafficStat) Load() (rx, tx uint64) {
+	return s.rx.Load(), s.tx.Load()
 }
 
-func (ts *trafficStat) incrRX(n int) {
+func (s *trafficStat) incrRX(n int) {
 	if n > 0 {
-		ts.rx.Add(uint64(n))
+		s.rx.Add(uint64(n))
 	}
 }
 
-func (ts *trafficStat) incrTX(n int) {
+func (s *trafficStat) incrTX(n int) {
 	if n > 0 {
-		ts.tx.Add(uint64(n))
+		s.tx.Add(uint64(n))
 	}
 }
 
 type streamStat struct {
-	history atomic.Int64
-	active  atomic.Int64
+	cumulative, active atomic.Int64
 }
 
-func (ss *streamStat) openOne() {
-	ss.history.Add(1)
-	ss.active.Add(1)
+func (s *streamStat) Load() (cumulative, active int64) {
+	return s.cumulative.Load(), s.active.Load()
 }
 
-func (ss *streamStat) closeOne() {
-	ss.active.Add(-1)
+func (s *streamStat) incr() {
+	s.cumulative.Add(1)
+	s.active.Add(1)
 }
 
-func (ss *streamStat) NumStreams() (int64, int64) {
-	return ss.history.Load(), ss.active.Load()
+func (s *streamStat) decr() {
+	s.active.Add(-1)
 }
