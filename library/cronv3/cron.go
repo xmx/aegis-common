@@ -50,10 +50,17 @@ func (c *Crontab) AddTask(task Tasker) error {
 		info.ID = qualifiedID(task)
 	}
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	return c.addFunc(info, task.Call)
+}
+
+func (c *Crontab) AddTasks(tasks []Tasker) error {
+	for _, task := range tasks {
+		if err := c.AddTask(task); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *Crontab) AddJob(spec string, cmd func()) error {
